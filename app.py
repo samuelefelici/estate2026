@@ -48,6 +48,12 @@ def get_connection():
 
 conn = get_connection()
 
+cur = conn.cursor()
+cur.execute("select now();")
+st.write("DB OK:", cur.fetchone()[0])
+cur.close()
+
+
 # --------------------------------------------------
 # QUERY
 # --------------------------------------------------
