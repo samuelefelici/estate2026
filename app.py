@@ -41,13 +41,10 @@ if not check_password():
 @st.cache_resource
 def get_connection():
     return psycopg2.connect(
-        host=st.secrets["DB_HOST"],
-        port=st.secrets["DB_PORT"],
-        dbname=st.secrets["DB_NAME"],
-        user=st.secrets["DB_USER"],
-        password=st.secrets["DB_PASSWORD"],
+        st.secrets["DATABASE_URL"],
         sslmode="require"
     )
+
 
 conn = get_connection()
 
