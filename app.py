@@ -28,7 +28,7 @@ st.set_page_config(
     page_title="Estate 2026 - Executive Dashboard", 
     layout="wide",
     initial_sidebar_state="expanded",
-    page_icon="🚌"
+    page_icon="���"
 )
 
 # CSS CUSTOM - DARK MODE PROFESSIONALE TRASPORTI
@@ -220,6 +220,15 @@ st.markdown("""
         transform: translateY(-2px) !important;
         box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4) !important;
     }
+    
+    /* Info box custom */
+    .info-box {
+        background: rgba(15, 23, 42, 0.8);
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(96, 165, 250, 0.3);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -391,6 +400,29 @@ st.markdown("---")
 # --------------------------------------------------
 st.markdown("### 📊 INDICATORI CHIAVE DI PERFORMANCE")
 
+# Calcola statistiche corrette
+if len(df_filtered) > 0:
+    giorni_analizzati = df_filtered['giorno'].nunique()
+    
+    # Statistiche per tipo giorno
+    stats_per_tipo = df_filtered.groupby("tipo_giorno").agg({
+        "turni_richiesti": "mean",
+        "disponibili_netti": "mean",
+        "gap": "mean"
+    }).round(1)
+    
+    # Mostra riepilogo tipo giorno
+    if len(stats_per_tipo) > 0:
+        tipo_str = " | ".join([f"<b>{tipo}</b>: {int(row['turni_richiesti'])} turni/giorno" 
+                               for tipo, row in stats_per_tipo.iterrows()])
+        st.markdown(f"""
+        <div class='info-box'>
+            <p style='color: #93c5fd; margin: 0; font-size: 0.95rem; font-weight: 600;'>
+                📊 <b>Fabbisogno Turni per Tipo Giorno:</b> {tipo_str}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
 kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
 # KPI 1: Totale Dipendenti
@@ -402,43 +434,65 @@ with kpi1:
         help="Numero totale di autisti nei depositi selezionati"
     )
 
-# KPI 2: Turni Totali
-totale_turni = int(df_filtered["turni_richiesti"].sum())
+# KPI 2: Media Turni al Giorno (CORRETTO - somma per giorno poi media)
+if len(df_filtered) > 0:
+    media_turni_giorno = df_filtered.groupby("giorno")["turni_richiesti"].sum().mean()
+else:
+    media_turni_giorno = 0
+
 with kpi2:
     st.metric(
-        "🚌 Turni Richiesti",
-        f"{totale_turni:,}",
-        help="Totale turni da coprire nel periodo"
+        "🚌 Media Turni/Giorno",
+        f"{int(media_turni_giorno):,}",
+        help=f"Media turni richiesti per singolo giorno (su {giorni_analizzati} giorni)"
     )
 
-# KPI 3: Disponibilità Media
-disponibilita_media = df_filtered["disponibili_netti"].mean()
+# KPI 3: Disponibilità Media Giornaliera (CORRETTO)
+if len(df_filtered) > 0:
+    disponibilita_media_giorno = df_filtered.groupby("giorno")["disponibili_netti"].sum().mean()
+else:
+    disponibilita_media_giorno = 0
+
 with kpi3:
     st.metric(
-        "📈 Disponibilità/Giorno",
-        f"{disponibilita_media:.1f}",
-        help="Media giornaliera operatori disponibili"
+        "📈 Disponibilità Media/Giorno",
+        f"{int(disponibilita_media_giorno):,}",
+        help="Media operatori disponibili per singolo giorno"
     )
 
-# KPI 4: Gap Totale
-gap_totale = int(df_filtered["gap"].sum())
-delta_pct = (gap_totale / totale_turni * 100) if totale_turni > 0 else 0
+# KPI 4: Gap Medio Giornaliero (CORRETTO)
+if len(df_filtered) > 0:
+    gap_medio_giorno = df_filtered.groupby("giorno")["gap"].sum().mean()
+    gap_pct_medio = (gap_medio_giorno / media_turni_giorno * 100) if media_turni_giorno > 0 else 0
+else:
+    gap_medio_giorno = 0
+    gap_pct_medio = 0
+
 with kpi4:
     st.metric(
-        "⚖️ Gap Copertura",
-        f"{gap_totale:,}",
-        delta=f"{delta_pct:.1f}%",
-        delta_color="normal" if gap_totale >= 0 else "inverse",
-        help="Saldo disponibilità vs richieste"
+        "⚖️ Gap Medio/Giorno",
+        f"{int(gap_medio_giorno):,}",
+        delta=f"{gap_pct_medio:.1f}%",
+        delta_color="normal" if gap_medio_giorno >= 0 else "inverse",
+        help="Gap medio giornaliero (disponibili - turni richiesti)"
     )
 
-# KPI 5: Assenze Previste
-totale_assenze = int(df_filtered["assenze_previste"].sum())
+# KPI 5: Giorni Critici (NUOVO)
+if len(df_filtered) > 0:
+    gap_per_giorno = df_filtered.groupby("giorno")["gap"].sum()
+    giorni_critici_count = (gap_per_giorno < soglia_gap).sum()
+    pct_critici = (giorni_critici_count / giorni_analizzati * 100) if giorni_analizzati > 0 else 0
+else:
+    giorni_critici_count = 0
+    pct_critici = 0
+
 with kpi5:
     st.metric(
-        "🏥 Assenze Stimate",
-        f"{totale_assenze:,}",
-        help="Totale assenze stimate nel periodo"
+        "🚨 Giorni Critici",
+        f"{giorni_critici_count}/{giorni_analizzati}",
+        delta=f"{pct_critici:.0f}%",
+        delta_color="inverse" if giorni_critici_count > 0 else "normal",
+        help=f"Giorni con gap totale < {soglia_gap}"
     )
 
 st.markdown("---")
@@ -446,33 +500,45 @@ st.markdown("---")
 # --------------------------------------------------
 # ALLARMI CRITICITÀ
 # --------------------------------------------------
-giorni_critici = df_filtered[df_filtered["gap"] < soglia_gap]
-n_giorni_critici = len(giorni_critici)
-
-if n_giorni_critici > 0:
-    st.markdown(f"""
-    <div class="alert-critical">
-        🚨 <b>ALLARME ROSSO</b>: {n_giorni_critici} giorni con deficit critico (gap &lt; {soglia_gap})
-    </div>
-    """, unsafe_allow_html=True)
+# Raggruppa per giorno e calcola gap totale
+if len(df_filtered) > 0:
+    gap_per_giorno_df = df_filtered.groupby("giorno").agg({
+        "gap": "sum",
+        "turni_richiesti": "sum",
+        "disponibili_netti": "sum",
+        "deposito": "count"
+    }).reset_index()
+    gap_per_giorno_df.rename(columns={"deposito": "n_depositi"}, inplace=True)
     
-    # Mostra top 5 giorni critici
-    top_critici = giorni_critici.nsmallest(5, "gap")[["giorno", "deposito", "gap", "turni_richiesti", "disponibili_netti"]].copy()
-    top_critici["giorno"] = top_critici["giorno"].dt.strftime("%d/%m/%Y")
-    st.dataframe(top_critici, use_container_width=True, hide_index=True)
+    # Trova giorni critici
+    giorni_critici_df = gap_per_giorno_df[gap_per_giorno_df["gap"] < soglia_gap]
+    n_giorni_critici = len(giorni_critici_df)
     
-elif gap_totale < 0:
-    st.markdown(f"""
-    <div class="alert-warning">
-        ⚠️ <b>ATTENZIONE</b>: Gap totale negativo ({gap_totale}). Pianificare azioni correttive.
-    </div>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <div class="alert-success">
-        ✅ <b>OPERATIVITÀ GARANTITA</b>: Copertura turni completamente assicurata nel periodo.
-    </div>
-    """, unsafe_allow_html=True)
+    if n_giorni_critici > 0:
+        st.markdown(f"""
+        <div class="alert-critical">
+            🚨 <b>ALLARME ROSSO</b>: {n_giorni_critici} giorni con deficit critico (gap giornaliero totale &lt; {soglia_gap})
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Mostra top 5 giorni critici
+        top_critici = giorni_critici_df.nsmallest(5, "gap")[["giorno", "gap", "turni_richiesti", "disponibili_netti", "n_depositi"]].copy()
+        top_critici["giorno"] = top_critici["giorno"].dt.strftime("%d/%m/%Y")
+        top_critici.columns = ["Giorno", "Gap Totale", "Turni Richiesti", "Disponibili", "N° Depositi"]
+        st.dataframe(top_critici, use_container_width=True, hide_index=True)
+        
+    elif gap_medio_giorno < 0:
+        st.markdown(f"""
+        <div class="alert-warning">
+            ⚠️ <b>ATTENZIONE</b>: Gap medio giornaliero negativo ({int(gap_medio_giorno)}). Pianificare azioni correttive.
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="alert-success">
+            ✅ <b>OPERATIVITÀ GARANTITA</b>: Copertura turni completamente assicurata nel periodo.
+        </div>
+        """, unsafe_allow_html=True)
 
 st.markdown("---")
 
@@ -504,99 +570,103 @@ plotly_dark_template = {
 with col_left:
     st.markdown("### 📈 ANDAMENTO TEMPORALE STAFFING")
     
-    grouped = df_filtered.groupby("giorno").agg({
-        "turni_richiesti": "sum",
-        "disponibili_netti": "sum",
-        "gap": "sum",
-        "assenze_previste": "sum"
-    }).reset_index()
-    
-    fig_timeline = make_subplots(
-        rows=2, cols=1,
-        row_heights=[0.7, 0.3],
-        subplot_titles=("Turni vs Disponibilità", "Gap Giornaliero"),
-        vertical_spacing=0.12
-    )
-    
-    # Plot 1: Linee turni e disponibilità
-    fig_timeline.add_trace(
-        go.Scatter(
-            x=grouped["giorno"],
-            y=grouped["turni_richiesti"],
-            mode='lines+markers',
-            name='Turni Richiesti',
-            line=dict(color='#ef4444', width=3, shape='spline'),
-            marker=dict(size=8, symbol='circle', line=dict(width=2, color='#7f1d1d')),
-            fill='tozeroy',
-            fillcolor='rgba(239, 68, 68, 0.15)'
-        ),
-        row=1, col=1
-    )
-    
-    fig_timeline.add_trace(
-        go.Scatter(
-            x=grouped["giorno"],
-            y=grouped["disponibili_netti"],
-            mode='lines+markers',
-            name='Disponibili Netti',
-            line=dict(color='#22c55e', width=3, shape='spline'),
-            marker=dict(size=8, symbol='circle', line=dict(width=2, color='#14532d')),
-            fill='tozeroy',
-            fillcolor='rgba(34, 197, 94, 0.15)'
-        ),
-        row=1, col=1
-    )
-    
-    # Plot 2: Barre gap
-    colors = ['#dc2626' if g < soglia_gap else '#fb923c' if g < 0 else '#22c55e' 
-              for g in grouped["gap"]]
-    
-    fig_timeline.add_trace(
-        go.Bar(
-            x=grouped["giorno"],
-            y=grouped["gap"],
-            name="Gap",
-            marker=dict(
-                color=colors,
-                line=dict(width=1, color='rgba(255,255,255,0.2)')
+    if len(df_filtered) > 0:
+        # Raggruppa per giorno (somma di tutti i depositi)
+        grouped = df_filtered.groupby("giorno").agg({
+            "turni_richiesti": "sum",
+            "disponibili_netti": "sum",
+            "gap": "sum",
+            "assenze_previste": "sum"
+        }).reset_index()
+        
+        fig_timeline = make_subplots(
+            rows=2, cols=1,
+            row_heights=[0.7, 0.3],
+            subplot_titles=("Turni vs Disponibilità", "Gap Giornaliero"),
+            vertical_spacing=0.12
+        )
+        
+        # Plot 1: Linee turni e disponibilità
+        fig_timeline.add_trace(
+            go.Scatter(
+                x=grouped["giorno"],
+                y=grouped["turni_richiesti"],
+                mode='lines+markers',
+                name='Turni Richiesti',
+                line=dict(color='#ef4444', width=3, shape='spline'),
+                marker=dict(size=8, symbol='circle', line=dict(width=2, color='#7f1d1d')),
+                fill='tozeroy',
+                fillcolor='rgba(239, 68, 68, 0.15)'
             ),
-            showlegend=False
-        ),
-        row=2, col=1
-    )
-    
-    # Linea soglia critica
-    fig_timeline.add_hline(
-        y=soglia_gap, 
-        line_dash="dash", 
-        line_color="#dc2626",
-        line_width=2,
-        annotation_text="Soglia Critica",
-        annotation_font_color="#fca5a5",
-        row=2, col=1
-    )
-    
-    fig_timeline.update_layout(
-        height=600,
-        hovermode="x unified",
-        showlegend=True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1,
-            bgcolor='rgba(15, 23, 42, 0.8)',
-            bordercolor='rgba(96, 165, 250, 0.3)',
-            borderwidth=1
-        ),
-        **plotly_dark_template
-    )
-    
-    fig_timeline.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(96, 165, 250, 0.1)')
-    fig_timeline.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(96, 165, 250, 0.1)')
-    
-    st.plotly_chart(fig_timeline, use_container_width=True)
+            row=1, col=1
+        )
+        
+        fig_timeline.add_trace(
+            go.Scatter(
+                x=grouped["giorno"],
+                y=grouped["disponibili_netti"],
+                mode='lines+markers',
+                name='Disponibili Netti',
+                line=dict(color='#22c55e', width=3, shape='spline'),
+                marker=dict(size=8, symbol='circle', line=dict(width=2, color='#14532d')),
+                fill='tozeroy',
+                fillcolor='rgba(34, 197, 94, 0.15)'
+            ),
+            row=1, col=1
+        )
+        
+        # Plot 2: Barre gap
+        colors = ['#dc2626' if g < soglia_gap else '#fb923c' if g < 0 else '#22c55e' 
+                  for g in grouped["gap"]]
+        
+        fig_timeline.add_trace(
+            go.Bar(
+                x=grouped["giorno"],
+                y=grouped["gap"],
+                name="Gap",
+                marker=dict(
+                    color=colors,
+                    line=dict(width=1, color='rgba(255,255,255,0.2)')
+                ),
+                showlegend=False
+            ),
+            row=2, col=1
+        )
+        
+        # Linea soglia critica
+        fig_timeline.add_hline(
+            y=soglia_gap, 
+            line_dash="dash", 
+            line_color="#dc2626",
+            line_width=2,
+            annotation_text="Soglia Critica",
+            annotation_font_color="#fca5a5",
+            row=2, col=1
+        )
+        
+        fig_timeline.update_layout(
+            height=600,
+            hovermode="x unified",
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1,
+                bgcolor='rgba(15, 23, 42, 0.8)',
+                bordercolor='rgba(96, 165, 250, 0.3)',
+                borderwidth=1
+            ),
+            **plotly_dark_template
+        )
+        
+        fig_timeline.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(96, 165, 250, 0.1)')
+        fig_timeline.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(96, 165, 250, 0.1)')
+        
+        st.plotly_chart(fig_timeline, use_container_width=True)
+    else:
+        st.warning("⚠️ Nessun dato disponibile per i filtri selezionati")
 
 # --------------------------------------------------
 # GRAFICO 2: GAUGE + ASSENZE (DESTRA)
@@ -605,18 +675,18 @@ with col_right:
     st.markdown("### ⚖️ STATO COPERTURA")
     
     # Gauge chart
-    gap_pct = (gap_totale / totale_turni * 100) if totale_turni > 0 else 0
+    gap_pct = (gap_medio_giorno / media_turni_giorno * 100) if media_turni_giorno > 0 else 0
     
     fig_gauge = go.Figure(go.Indicator(
         mode="gauge+number+delta",
         value=gap_pct,
         domain={'x': [0, 1], 'y': [0, 1]},
         title={
-            'text': "Gap % su Turni", 
-            'font': {'size': 18, 'color': '#93c5fd', 'family': 'Arial Black'}
+            'text': "Gap % Medio/Giorno", 
+            'font': {'size': 16, 'color': '#93c5fd', 'family': 'Arial Black'}
         },
-        delta={'reference': 0, 'suffix': '%', 'font': {'size': 20, 'color': '#cbd5e1'}},
-        number={'suffix': '%', 'font': {'size': 36, 'color': '#60a5fa', 'family': 'Arial Black'}},
+        delta={'reference': 0, 'suffix': '%', 'font': {'size': 18, 'color': '#cbd5e1'}},
+        number={'suffix': '%', 'font': {'size': 32, 'color': '#60a5fa', 'family': 'Arial Black'}},
         gauge={
             'axis': {
                 'range': [-20, 20], 
@@ -637,7 +707,7 @@ with col_right:
             'threshold': {
                 'line': {'color': "#ef4444", 'width': 4},
                 'thickness': 0.75,
-                'value': (soglia_gap / totale_turni * 100) if totale_turni > 0 else 0
+                'value': (soglia_gap / media_turni_giorno * 100) if media_turni_giorno > 0 else 0
             }
         }
     ))
@@ -656,46 +726,49 @@ with col_right:
     # --------------------------------------------------
     st.markdown("### 🏥 COMPOSIZIONE ASSENZE")
     
-    assenze_breakdown = pd.DataFrame({
-        'Tipo': ['Infortuni', 'Malattie', 'Legge 104', 'Congedi', 'Permessi', 'Altro'],
-        'Totale': [
-            int(df_filtered['infortuni'].sum()),
-            int(df_filtered['malattie'].sum()),
-            int(df_filtered['legge_104'].sum()),
-            int(df_filtered['congedo_parentale'].sum()),
-            int(df_filtered['permessi_vari'].sum()),
-            int(df_filtered['altre_assenze'].sum())
-        ]
-    })
-    
-    # Filtra solo valori > 0
-    assenze_breakdown = assenze_breakdown[assenze_breakdown['Totale'] > 0]
-    
-    if len(assenze_breakdown) > 0:
-        fig_assenze = go.Figure(data=[go.Pie(
-            labels=assenze_breakdown['Tipo'],
-            values=assenze_breakdown['Totale'],
-            hole=.5,
-            marker=dict(
-                colors=['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6'],
-                line=dict(color='rgba(15, 23, 42, 0.8)', width=2)
-            ),
-            textinfo='label+percent',
-            textfont=dict(size=12, color='white', family='Arial Black'),
-            hovertemplate='<b>%{label}</b><br>%{value} assenze<br>%{percent}<extra></extra>'
-        )])
+    if len(df_filtered) > 0:
+        assenze_breakdown = pd.DataFrame({
+            'Tipo': ['Infortuni', 'Malattie', 'Legge 104', 'Congedi', 'Permessi', 'Altro'],
+            'Totale': [
+                int(df_filtered['infortuni'].sum()),
+                int(df_filtered['malattie'].sum()),
+                int(df_filtered['legge_104'].sum()),
+                int(df_filtered['congedo_parentale'].sum()),
+                int(df_filtered['permessi_vari'].sum()),
+                int(df_filtered['altre_assenze'].sum())
+            ]
+        })
         
-        fig_assenze.update_layout(
-            height=280,
-            showlegend=False,
-            paper_bgcolor='rgba(15, 23, 42, 0.5)',
-            font={'color': '#cbd5e1'},
-            margin=dict(l=0, r=0, t=0, b=0)
-        )
+        # Filtra solo valori > 0
+        assenze_breakdown = assenze_breakdown[assenze_breakdown['Totale'] > 0]
         
-        st.plotly_chart(fig_assenze, use_container_width=True)
+        if len(assenze_breakdown) > 0:
+            fig_assenze = go.Figure(data=[go.Pie(
+                labels=assenze_breakdown['Tipo'],
+                values=assenze_breakdown['Totale'],
+                hole=.5,
+                marker=dict(
+                    colors=['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6'],
+                    line=dict(color='rgba(15, 23, 42, 0.8)', width=2)
+                ),
+                textinfo='label+percent',
+                textfont=dict(size=12, color='white', family='Arial Black'),
+                hovertemplate='<b>%{label}</b><br>%{value} assenze<br>%{percent}<extra></extra>'
+            )])
+            
+            fig_assenze.update_layout(
+                height=280,
+                showlegend=False,
+                paper_bgcolor='rgba(15, 23, 42, 0.5)',
+                font={'color': '#cbd5e1'},
+                margin=dict(l=0, r=0, t=0, b=0)
+            )
+            
+            st.plotly_chart(fig_assenze, use_container_width=True)
+        else:
+            st.info("📊 Nessuna assenza prevista nel periodo selezionato")
     else:
-        st.info("📊 Nessuna assenza prevista nel periodo selezionato")
+        st.info("📊 Nessun dato disponibile")
 
 st.markdown("---")
 
@@ -732,9 +805,8 @@ if len(df_filtered) > 0:
         texttemplate='%{text:.0f}',
         textfont={"size": 10, "color": "white"},
         colorbar=dict(
-            title="Gap",
-            tickfont=dict(color='#cbd5e1'),
-            titlefont=dict(color='#93c5fd')
+            title=dict(text="Gap", font=dict(color='#93c5fd')),
+            tickfont=dict(color='#cbd5e1')
         ),
         hovertemplate='<b>%{y}</b><br>%{x}<br>Gap: %{z:.0f}<extra></extra>'
     ))
@@ -782,6 +854,16 @@ if len(df_filtered) > 0:
     by_deposito["gap"] = by_deposito["gap"].astype(int)
     by_deposito["assenze_previste"] = by_deposito["assenze_previste"].astype(int)
     
+    # Calcola media turni al giorno per deposito
+    giorni_per_deposito = df_filtered.groupby("deposito")["giorno"].nunique()
+    by_deposito = by_deposito.merge(
+        giorni_per_deposito.rename("giorni_periodo"), 
+        left_on="deposito", 
+        right_index=True
+    )
+    by_deposito["media_turni_giorno"] = (by_deposito["turni_richiesti"] / by_deposito["giorni_periodo"]).round(1)
+    by_deposito["media_gap_giorno"] = (by_deposito["gap"] / by_deposito["giorni_periodo"]).round(1)
+    
     # Calcola tasso copertura
     by_deposito["tasso_copertura_%"] = (
         (by_deposito["disponibili_netti"] / by_deposito["turni_richiesti"] * 100)
@@ -789,34 +871,34 @@ if len(df_filtered) > 0:
         .round(1)
     )
     
-    # Ordina per gap
-    by_deposito = by_deposito.sort_values("gap")
+    # Ordina per gap medio
+    by_deposito = by_deposito.sort_values("media_gap_giorno")
     
     # Grafico a barre orizzontali
     fig_depositi = go.Figure()
     
-    colors_dep = ['#dc2626' if g < soglia_gap else '#fb923c' if g < 0 else '#22c55e' 
-                  for g in by_deposito["gap"]]
+    colors_dep = ['#dc2626' if g < (soglia_gap / giorni_analizzati) else '#fb923c' if g < 0 else '#22c55e' 
+                  for g in by_deposito["media_gap_giorno"]]
     
     fig_depositi.add_trace(go.Bar(
         y=by_deposito["deposito"],
-        x=by_deposito["gap"],
+        x=by_deposito["media_gap_giorno"],
         orientation='h',
         marker=dict(
             color=colors_dep,
             line=dict(width=1, color='rgba(255,255,255,0.2)')
         ),
-        text=by_deposito["gap"],
+        text=by_deposito["media_gap_giorno"],
         textposition='outside',
-        texttemplate='%{text:.0f}',
+        texttemplate='%{text:.1f}',
         textfont=dict(color='#cbd5e1', size=12, family='Arial Black'),
-        hovertemplate='<b>%{y}</b><br>Gap: %{x:.0f}<extra></extra>'
+        hovertemplate='<b>%{y}</b><br>Gap medio/giorno: %{x:.1f}<extra></extra>'
     ))
     
     fig_depositi.update_layout(
         height=max(400, len(by_deposito) * 35),
         xaxis=dict(
-            title="Gap (positivo = eccedenza, negativo = deficit)",
+            title="Gap Medio per Giorno (positivo = eccedenza, negativo = deficit)",
             titlefont=dict(color='#93c5fd', size=14),
             tickfont=dict(color='#cbd5e1')
         ),
@@ -844,12 +926,22 @@ if len(df_filtered) > 0:
         by_deposito[[
             "deposito", 
             "totale_dipendenti",
-            "turni_richiesti", 
+            "giorni_periodo",
+            "media_turni_giorno",
             "disponibili_netti", 
             "assenze_previste",
-            "gap",
+            "media_gap_giorno",
             "tasso_copertura_%"
-        ]],
+        ]].rename(columns={
+            "deposito": "Deposito",
+            "totale_dipendenti": "Tot. Autisti",
+            "giorni_periodo": "Giorni",
+            "media_turni_giorno": "Media Turni/Giorno",
+            "disponibili_netti": "Disponibili Totali",
+            "assenze_previste": "Assenze Previste",
+            "media_gap_giorno": "Gap Medio/Giorno",
+            "tasso_copertura_%": "Tasso Copertura %"
+        }),
         use_container_width=True,
         hide_index=True
     )
