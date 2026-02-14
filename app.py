@@ -28,11 +28,12 @@ st.set_page_config(
     page_title="Estate 2026 - Executive Dashboard", 
     layout="wide",
     initial_sidebar_state="expanded",
-    page_icon="🚌"
+    page_icon="🚍"
 )
 
-# CSS CUSTOM - DARK MODE PROFESSIONALE TRASPORTI
+# CSS CUSTOM - DARK MODE PROFESSIONALE TRASPORTI + FONT AWESOME
 st.markdown("""
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
     /* Dark Background principale */
     .stApp {
@@ -349,7 +350,7 @@ except Exception as e:
 # --------------------------------------------------
 # FILTRI SIDEBAR
 # --------------------------------------------------
-st.sidebar.markdown("## 🎛️ PANNELLO DI CONTROLLO")
+st.sidebar.markdown("## <i class='fas fa-sliders-h'></i> PANNELLO DI CONTROLLO", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
 depositi = sorted(df["deposito"].unique())
@@ -394,16 +395,16 @@ else:
 # --------------------------------------------------
 # HEADER
 # --------------------------------------------------
-st.markdown("<h1 style='text-align: center;'>🚌 ESTATE 2026 - ANALISI STAFFING</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'><i class='fas fa-bus'></i> ESTATE 2026 - ANALISI STAFFING</h1>", unsafe_allow_html=True)
 if len(date_range) == 2:
-    st.markdown(f"<p style='text-align: center; color: #93c5fd; font-size: 1.2rem; font-weight: 600;'>📅 {date_range[0].strftime('%d/%m/%Y')} - {date_range[1].strftime('%d/%m/%Y')} | 🏢 {len(deposito_sel)}/{len(depositi)} Depositi</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: #93c5fd; font-size: 1.2rem; font-weight: 600;'><i class='far fa-calendar-alt'></i> {date_range[0].strftime('%d/%m/%Y')} - {date_range[1].strftime('%d/%m/%Y')} | <i class='fas fa-building'></i> {len(deposito_sel)}/{len(depositi)} Depositi</p>", unsafe_allow_html=True)
 
 st.markdown("---")
 
 # --------------------------------------------------
 # KPI EXECUTIVE - ROW 1
 # --------------------------------------------------
-st.markdown("### 📊 INDICATORI CHIAVE DI PERFORMANCE")
+st.markdown("### <i class='fas fa-chart-line'></i> INDICATORI CHIAVE DI PERFORMANCE", unsafe_allow_html=True)
 
 # Calcola statistiche corrette
 if len(df_filtered) > 0:
@@ -422,7 +423,7 @@ if len(df_filtered) > 0:
     
     df_filtered['categoria_giorno'] = df_filtered['tipo_giorno'].apply(categorizza_tipo_giorno)
     
-    # Statistiche per categoria giorno (Lu-Ve, Sab, Dom)
+    # Statistiche per categoria giorno
     stats_per_categoria = df_filtered.groupby("categoria_giorno").agg({
         "turni_richiesti": "mean",
         "disponibili_netti": "mean",
@@ -440,7 +441,7 @@ if len(df_filtered) > 0:
         st.markdown(f"""
         <div class='info-box'>
             <p style='color: #93c5fd; margin: 0; font-size: 0.95rem; font-weight: 600;'>
-                📊 <b>Fabbisogno Medio Turni:</b> {tipo_str}
+                <i class='fas fa-chart-bar'></i> <b>Fabbisogno Medio Turni:</b> {tipo_str}
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -451,7 +452,7 @@ kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 totale_dipendenti = df_depositi[df_depositi["deposito"].isin(deposito_sel)]["totale_dipendenti"].sum()
 with kpi1:
     st.metric(
-        "👥 Autisti Totali",
+        "👤 Autisti Totali",
         f"{int(totale_dipendenti):,}",
         help="Numero totale di autisti nei depositi selezionati"
     )
@@ -472,7 +473,7 @@ else:
 
 with kpi3:
     st.metric(
-        "📈 Disponibilità Media/Giorno",
+        "📊 Disponibilità Media/Giorno",
         f"{int(disponibilita_media_giorno):,}",
         help="Media operatori disponibili per singolo giorno"
     )
@@ -535,7 +536,7 @@ if len(df_filtered) > 0:
     if n_giorni_critici > 0:
         st.markdown(f"""
         <div class="alert-critical">
-            🚨 <b>ALLARME ROSSO</b>: {n_giorni_critici} giorni con deficit critico (gap giornaliero totale &lt; {soglia_gap})
+            <i class='fas fa-exclamation-triangle'></i> <b>ALLARME ROSSO</b>: {n_giorni_critici} giorni con deficit critico (gap giornaliero totale &lt; {soglia_gap})
         </div>
         """, unsafe_allow_html=True)
         
@@ -547,13 +548,13 @@ if len(df_filtered) > 0:
     elif gap_medio_giorno < 0:
         st.markdown(f"""
         <div class="alert-warning">
-            ⚠️ <b>ATTENZIONE</b>: Gap medio giornaliero negativo ({int(gap_medio_giorno)}). Pianificare azioni correttive.
+            <i class='fas fa-exclamation-circle'></i> <b>ATTENZIONE</b>: Gap medio giornaliero negativo ({int(gap_medio_giorno)}). Pianificare azioni correttive.
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
         <div class="alert-success">
-            ✅ <b>OPERATIVITÀ GARANTITA</b>: Copertura turni completamente assicurata nel periodo.
+            <i class='fas fa-check-circle'></i> <b>OPERATIVITÀ GARANTITA</b>: Copertura turni completamente assicurata nel periodo.
         </div>
         """, unsafe_allow_html=True)
 
@@ -581,7 +582,7 @@ plotly_dark_template = {
 }
 
 with col_left:
-    st.markdown("### 📈 ANDAMENTO TEMPORALE STAFFING")
+    st.markdown("### <i class='fas fa-chart-area'></i> ANDAMENTO TEMPORALE STAFFING", unsafe_allow_html=True)
     
     if len(df_filtered) > 0:
         grouped = df_filtered.groupby("giorno").agg({
@@ -678,7 +679,7 @@ with col_left:
         st.warning("⚠️ Nessun dato disponibile per i filtri selezionati")
 
 with col_right:
-    st.markdown("### ⚖️ STATO COPERTURA")
+    st.markdown("### <i class='fas fa-tachometer-alt'></i> STATO COPERTURA", unsafe_allow_html=True)
     
     gap_pct = (gap_medio_giorno / media_turni_giorno * 100) if media_turni_giorno > 0 else 0
     
@@ -726,7 +727,7 @@ with col_right:
     
     st.plotly_chart(fig_gauge, use_container_width=True)
     
-    st.markdown("### 🏥 COMPOSIZIONE ASSENZE")
+    st.markdown("### <i class='fas fa-user-injured'></i> COMPOSIZIONE ASSENZE", unsafe_allow_html=True)
     
     if len(df_filtered) > 0:
         assenze_breakdown = pd.DataFrame({
@@ -774,7 +775,7 @@ with col_right:
 st.markdown("---")
 
 # HEATMAP
-st.markdown("### 🗺️ HEATMAP CRITICITÀ PER DEPOSITO/GIORNO")
+st.markdown("### <i class='fas fa-map'></i> HEATMAP CRITICITÀ PER DEPOSITO/GIORNO", unsafe_allow_html=True)
 
 if len(df_filtered) > 0:
     pivot_gap = df_filtered.pivot_table(
@@ -822,7 +823,7 @@ if len(df_filtered) > 0:
         yaxis=dict(
             title="Deposito",
             titlefont=dict(color='#93c5fd'),
-            tickfont=dict(color='#cbd5e1)',
+            tickfont=dict(color='#cbd5e1'),
             gridcolor='rgba(96, 165, 250, 0.1)',
             linecolor='rgba(96, 165, 250, 0.3)',
             zerolinecolor='rgba(96, 165, 250, 0.3)'
@@ -839,7 +840,7 @@ else:
 st.markdown("---")
 
 # RANKING DEPOSITI
-st.markdown("### 🏢 RANKING DEPOSITI PER PERFORMANCE")
+st.markdown("### <i class='fas fa-trophy'></i> RANKING DEPOSITI PER PERFORMANCE", unsafe_allow_html=True)
 
 if len(df_filtered) > 0:
     by_deposito = df_filtered.groupby("deposito").agg({
@@ -945,7 +946,7 @@ else:
 st.markdown("---")
 
 # SUNBURST
-st.markdown("### 🌅 DISTRIBUZIONE GERARCHICA TURNI")
+st.markdown("### <i class='fas fa-sun'></i> DISTRIBUZIONE GERARCHICA TURNI", unsafe_allow_html=True)
 
 if len(df_filtered) > 0:
     df_sunburst = df_filtered.groupby(["deposito", "categoria_giorno"]).agg({
@@ -973,7 +974,7 @@ else:
     st.warning("⚠️ Nessun dato disponibile per i filtri selezionati")
 
 # DATI COMPLETI
-with st.expander("🔍 VISUALIZZA DATASET COMPLETO"):
+with st.expander("�� VISUALIZZA DATASET COMPLETO"):
     if len(df_filtered) > 0:
         df_display = df_filtered.copy()
         df_display["giorno"] = df_display["giorno"].dt.strftime("%d/%m/%Y")
@@ -986,13 +987,13 @@ st.markdown("---")
 st.markdown(f"""
 <div style='text-align: center; padding: 30px;'>
     <p style='font-size: 1.2em; font-weight: 700; color: #60a5fa; text-shadow: 0 0 10px rgba(96, 165, 250, 0.5);'>
-        🚀 ESTATE 2026 EXECUTIVE DASHBOARD
+        <i class='fas fa-rocket'></i> ESTATE 2026 EXECUTIVE DASHBOARD
     </p>
     <p style='font-size: 0.9em; color: #93c5fd; margin-top: 10px;'>
-        Powered by Streamlit + Supabase + Plotly
+        <i class='fas fa-bolt'></i> Powered by Streamlit + Supabase + Plotly
     </p>
     <p style='font-size: 0.85em; color: #64748b; margin-top: 5px;'>
-        Ultimo aggiornamento: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
+        <i class='far fa-clock'></i> Ultimo aggiornamento: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
     </p>
 </div>
 """, unsafe_allow_html=True)
