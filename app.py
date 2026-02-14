@@ -21,6 +21,10 @@ from plotly.subplots import make_subplots
 import psycopg2
 from datetime import datetime, timedelta
 
+# FORCE CACHE CLEAR (rimuovi dopo il primo run)
+st.cache_data.clear()
+st.cache_resource.clear()
+
 # --------------------------------------------------
 # CONFIGURAZIONE PAGINA
 # --------------------------------------------------
