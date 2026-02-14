@@ -818,7 +818,7 @@ if len(df_filtered) > 0:
             tickfont=dict(color='#cbd5e1'),
             gridcolor='rgba(96, 165, 250, 0.1)',
             linecolor='rgba(96, 165, 250, 0.3)',
-            zerolinecolor='rgba(96, 165, 250, 0.3)
+            zerolinecolor='rgba(96, 165, 250, 0.3)'
         ),
         yaxis=dict(
             title="Deposito",
