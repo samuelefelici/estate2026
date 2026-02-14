@@ -1,4 +1,23 @@
-streamlit
-pandas
-plotly
-psycopg2-binary
+# ============================================================
+# REQUIREMENTS - ESTATE 2026 DASHBOARD PREMIUM
+# ============================================================
+
+# Core Framework
+streamlit>=1.28.0
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Visualizations
+plotly>=5.17.0
+
+# Database
+psycopg2-binary>=2.9.9
+
+# Excel Export
+xlsxwriter>=3.1.9
+openpyxl>=3.1.2
+
+# Utilities
+python-dateutil>=2.8.2
