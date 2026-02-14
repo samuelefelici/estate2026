@@ -809,28 +809,28 @@ if len(df_filtered) > 0:
         hovertemplate='<b>%{y}</b><br>%{x}<br>Gap: %{z:.0f}<extra></extra>'
     ))
     
-fig_heatmap.update_layout(
-    height=max(300, len(pivot_gap) * 40),
-    xaxis=dict(
-        title="Giorno",
-        titlefont=dict(color='#93c5fd'),
-        tickfont=dict(color='#cbd5e1'),
-        gridcolor='rgba(96, 165, 250, 0.1)',
-        linecolor='rgba(96, 165, 250, 0.3)',
-        zerolinecolor='rgba(96, 165, 250, 0.3)'
-    ),
-    yaxis=dict(
-        title="Deposito",
-        titlefont=dict(color='#93c5fd'),
-        tickfont=dict(color='#cbd5e1)',
-        gridcolor='rgba(96, 165, 250, 0.1)',
-        linecolor='rgba(96, 165, 250, 0.3)',
-        zerolinecolor='rgba(96, 165, 250, 0.3)'
-    ),
-    plot_bgcolor='rgba(15, 23, 42, 0.8)',
-    paper_bgcolor='rgba(15, 23, 42, 0.5)',
-    font={'color': '#cbd5e1', 'family': 'Arial, sans-serif'}
-)
+    fig_heatmap.update_layout(
+        height=max(300, len(pivot_gap) * 40),
+        xaxis=dict(
+            title="Giorno",
+            titlefont=dict(color='#93c5fd'),
+            tickfont=dict(color='#cbd5e1'),
+            gridcolor='rgba(96, 165, 250, 0.1)',
+            linecolor='rgba(96, 165, 250, 0.3)',
+            zerolinecolor='rgba(96, 165, 250, 0.3)'
+        ),
+        yaxis=dict(
+            title="Deposito",
+            titlefont=dict(color='#93c5fd'),
+            tickfont=dict(color='#cbd5e1)',
+            gridcolor='rgba(96, 165, 250, 0.1)',
+            linecolor='rgba(96, 165, 250, 0.3)',
+            zerolinecolor='rgba(96, 165, 250, 0.3)'
+        ),
+        plot_bgcolor='rgba(15, 23, 42, 0.8)',
+        paper_bgcolor='rgba(15, 23, 42, 0.5)',
+        font={'color': '#cbd5e1', 'family': 'Arial, sans-serif'}
+    )
     
     st.plotly_chart(fig_heatmap, use_container_width=True)
 else:
