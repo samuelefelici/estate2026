@@ -28,107 +28,197 @@ st.set_page_config(
     page_title="Estate 2026 - Executive Dashboard", 
     layout="wide",
     initial_sidebar_state="expanded",
-    page_icon="📊"
+    page_icon="🚌"
 )
 
-# CSS CUSTOM - DESIGN MIGLIORATO
+# CSS CUSTOM - DARK MODE PROFESSIONALE TRASPORTI
 st.markdown("""
 <style>
-    /* Background principale */
+    /* Dark Background principale */
     .stApp {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+        background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f172a 100%);
     }
     
-    /* Headers */
+    /* Headers con glow effect */
     h1 {
-        color: white !important;
-        text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
-        font-weight: 800 !important;
-        letter-spacing: 1px;
+        color: #60a5fa !important;
+        text-shadow: 0 0 20px rgba(96, 165, 250, 0.5), 0 0 40px rgba(96, 165, 250, 0.3);
+        font-weight: 900 !important;
+        letter-spacing: 2px;
+        font-size: 3rem !important;
     }
     
-    h2, h3 {
-        color: white !important;
-        text-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+    h2 {
+        color: #93c5fd !important;
+        text-shadow: 0 0 10px rgba(147, 197, 253, 0.4);
+        font-weight: 700 !important;
+        margin-top: 30px !important;
+    }
+    
+    h3 {
+        color: #bfdbfe !important;
+        text-shadow: 0 0 8px rgba(191, 219, 254, 0.3);
         font-weight: 600 !important;
     }
     
-    /* Metrics - stile card */
+    /* Metrics - Glass morphism style */
     [data-testid="stMetricValue"] {
-        font-size: 2.2rem !important;
-        font-weight: 700 !important;
-        color: #1e3c72 !important;
+        font-size: 2.5rem !important;
+        font-weight: 900 !important;
+        color: #60a5fa !important;
+        text-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
     }
     
     [data-testid="stMetricLabel"] {
-        font-size: 0.95rem !important;
+        font-size: 1rem !important;
         font-weight: 600 !important;
-        color: #1e3c72 !important;
+        color: #93c5fd !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
     
-    /* Metric containers */
+    [data-testid="stMetricDelta"] {
+        font-weight: 700 !important;
+    }
+    
+    /* Metric containers - Glassmorphism */
     [data-testid="metric-container"] {
-        background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,240,255,0.95) 100%);
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        border: 1px solid rgba(255,255,255,0.3);
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+        padding: 25px;
+        border-radius: 16px;
+        box-shadow: 
+            0 8px 32px 0 rgba(0, 0, 0, 0.5),
+            inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(96, 165, 250, 0.2);
+        transition: all 0.3s ease;
     }
     
-    /* Sidebar */
+    [data-testid="metric-container"]:hover {
+        transform: translateY(-5px);
+        box-shadow: 
+            0 12px 40px 0 rgba(96, 165, 250, 0.3),
+            inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(96, 165, 250, 0.4);
+    }
+    
+    /* Sidebar - Dark elegant */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1e3c72 0%, #2a5298 100%);
+        background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+        border-right: 2px solid rgba(96, 165, 250, 0.3);
     }
     
     [data-testid="stSidebar"] * {
-        color: white !important;
+        color: #e0e7ff !important;
     }
     
-    /* Alert boxes */
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {
+        color: #60a5fa !important;
+    }
+    
+    /* Dividers */
+    hr {
+        border-color: rgba(96, 165, 250, 0.2) !important;
+        margin: 30px 0 !important;
+    }
+    
+    /* Alert boxes - Neon style */
     .alert-critical {
-        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-        padding: 18px;
-        border-radius: 12px;
-        color: white;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.3) 100%);
+        padding: 20px;
+        border-radius: 16px;
+        color: #fecaca;
         font-weight: 700;
-        margin: 15px 0;
-        box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
-        border-left: 5px solid #7f1d1d;
+        font-size: 1.1rem;
+        margin: 20px 0;
+        box-shadow: 
+            0 8px 32px rgba(239, 68, 68, 0.4),
+            inset 0 0 20px rgba(239, 68, 68, 0.1);
+        border: 2px solid rgba(239, 68, 68, 0.5);
+        border-left: 6px solid #ef4444;
     }
     
     .alert-warning {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        padding: 18px;
-        border-radius: 12px;
-        color: white;
+        background: linear-gradient(135deg, rgba(251, 146, 60, 0.2) 0%, rgba(249, 115, 22, 0.3) 100%);
+        padding: 20px;
+        border-radius: 16px;
+        color: #fed7aa;
         font-weight: 700;
-        margin: 15px 0;
-        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-        border-left: 5px solid #b45309;
+        font-size: 1.1rem;
+        margin: 20px 0;
+        box-shadow: 
+            0 8px 32px rgba(251, 146, 60, 0.4),
+            inset 0 0 20px rgba(251, 146, 60, 0.1);
+        border: 2px solid rgba(251, 146, 60, 0.5);
+        border-left: 6px solid #fb923c;
     }
     
     .alert-success {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        padding: 18px;
-        border-radius: 12px;
-        color: white;
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(22, 163, 74, 0.3) 100%);
+        padding: 20px;
+        border-radius: 16px;
+        color: #bbf7d0;
         font-weight: 700;
-        margin: 15px 0;
-        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-        border-left: 5px solid #047857;
+        font-size: 1.1rem;
+        margin: 20px 0;
+        box-shadow: 
+            0 8px 32px rgba(34, 197, 94, 0.4),
+            inset 0 0 20px rgba(34, 197, 94, 0.1);
+        border: 2px solid rgba(34, 197, 94, 0.5);
+        border-left: 6px solid #22c55e;
     }
     
-    /* Plotly charts background */
+    /* Plotly charts - Dark theme */
     .js-plotly-plot {
-        border-radius: 12px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        background: rgba(15, 23, 42, 0.5) !important;
+        border: 1px solid rgba(96, 165, 250, 0.2);
     }
     
     /* Dataframe styling */
     [data-testid="stDataFrame"] {
-        border-radius: 12px;
+        border-radius: 16px;
         overflow: hidden;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(96, 165, 250, 0.2);
+    }
+    
+    /* Expander */
+    [data-testid="stExpander"] {
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(96, 165, 250, 0.2);
+        border-radius: 12px;
+    }
+    
+    /* Text elements */
+    p, span, label {
+        color: #cbd5e1 !important;
+    }
+    
+    /* Inputs */
+    input, select, textarea {
+        background: rgba(15, 23, 42, 0.8) !important;
+        color: #e0e7ff !important;
+        border: 1px solid rgba(96, 165, 250, 0.3) !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Buttons */
+    button {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -245,29 +335,32 @@ except Exception as e:
 # --------------------------------------------------
 # FILTRI SIDEBAR
 # --------------------------------------------------
-st.sidebar.header("🎛️ CONTROLLI")
+st.sidebar.markdown("## 🎛️ PANNELLO DI CONTROLLO")
+st.sidebar.markdown("---")
 
 depositi = sorted(df["deposito"].unique())
 deposito_sel = st.sidebar.multiselect(
-    "📍 Depositi", 
+    "📍 DEPOSITI", 
     depositi, 
     default=depositi,
-    help="Seleziona depositi da analizzare"
+    help="Seleziona i depositi da analizzare"
 )
 
 min_date = df["giorno"].min().date()
 max_date = df["giorno"].max().date()
 
 date_range = st.sidebar.date_input(
-    "📅 Periodo Analisi",
+    "📅 PERIODO ANALISI",
     value=(min_date, max_date),
     min_value=min_date,
     max_value=max_date
 )
 
+st.sidebar.markdown("---")
+
 # Soglia criticità
 soglia_gap = st.sidebar.slider(
-    "⚠️ Soglia Gap Critico",
+    "⚠️ SOGLIA CRITICA GAP",
     min_value=-50,
     max_value=0,
     value=-10,
@@ -287,16 +380,16 @@ else:
 # --------------------------------------------------
 # HEADER
 # --------------------------------------------------
-st.title("🏖️ ESTATE 2026 - EXECUTIVE DASHBOARD")
+st.markdown("<h1 style='text-align: center;'>🚌 ESTATE 2026 - ANALISI STAFFING</h1>", unsafe_allow_html=True)
 if len(date_range) == 2:
-    st.markdown(f"**Periodo:** {date_range[0].strftime('%d/%m/%Y')} - {date_range[1].strftime('%d/%m/%Y')} | **Depositi:** {len(deposito_sel)}/{len(depositi)}")
+    st.markdown(f"<p style='text-align: center; color: #93c5fd; font-size: 1.2rem; font-weight: 600;'>📅 {date_range[0].strftime('%d/%m/%Y')} - {date_range[1].strftime('%d/%m/%Y')} | 🏢 {len(deposito_sel)}/{len(depositi)} Depositi</p>", unsafe_allow_html=True)
 
 st.markdown("---")
 
 # --------------------------------------------------
 # KPI EXECUTIVE - ROW 1
 # --------------------------------------------------
-st.markdown("### 📊 INDICATORI CHIAVE")
+st.markdown("### 📊 INDICATORI CHIAVE DI PERFORMANCE")
 
 kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
@@ -304,7 +397,7 @@ kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 totale_dipendenti = df_depositi[df_depositi["deposito"].isin(deposito_sel)]["totale_dipendenti"].sum()
 with kpi1:
     st.metric(
-        "👥 Totale Dipendenti",
+        "👥 Autisti Totali",
         f"{int(totale_dipendenti):,}",
         help="Numero totale di autisti nei depositi selezionati"
     )
@@ -322,7 +415,7 @@ with kpi2:
 disponibilita_media = df_filtered["disponibili_netti"].mean()
 with kpi3:
     st.metric(
-        "📈 Disponibilità Media/Giorno",
+        "📈 Disponibilità/Giorno",
         f"{disponibilita_media:.1f}",
         help="Media giornaliera operatori disponibili"
     )
@@ -332,7 +425,7 @@ gap_totale = int(df_filtered["gap"].sum())
 delta_pct = (gap_totale / totale_turni * 100) if totale_turni > 0 else 0
 with kpi4:
     st.metric(
-        "⚖️ Gap Totale",
+        "⚖️ Gap Copertura",
         f"{gap_totale:,}",
         delta=f"{delta_pct:.1f}%",
         delta_color="normal" if gap_totale >= 0 else "inverse",
@@ -343,7 +436,7 @@ with kpi4:
 totale_assenze = int(df_filtered["assenze_previste"].sum())
 with kpi5:
     st.metric(
-        "🏥 Assenze Previste",
+        "🏥 Assenze Stimate",
         f"{totale_assenze:,}",
         help="Totale assenze stimate nel periodo"
     )
@@ -359,7 +452,7 @@ n_giorni_critici = len(giorni_critici)
 if n_giorni_critici > 0:
     st.markdown(f"""
     <div class="alert-critical">
-        🚨 <b>ALLARME CRITICITÀ</b>: {n_giorni_critici} giorni con gap inferiore a {soglia_gap}
+        🚨 <b>ALLARME ROSSO</b>: {n_giorni_critici} giorni con deficit critico (gap &lt; {soglia_gap})
     </div>
     """, unsafe_allow_html=True)
     
@@ -377,7 +470,7 @@ elif gap_totale < 0:
 else:
     st.markdown("""
     <div class="alert-success">
-        ✅ <b>SITUAZIONE SOTTO CONTROLLO</b>: Copertura turni garantita nel periodo.
+        ✅ <b>OPERATIVITÀ GARANTITA</b>: Copertura turni completamente assicurata nel periodo.
     </div>
     """, unsafe_allow_html=True)
 
@@ -387,6 +480,23 @@ st.markdown("---")
 # GRAFICI PRINCIPALE - LAYOUT 2 COLONNE
 # --------------------------------------------------
 col_left, col_right = st.columns([2, 1])
+
+# DARK THEME PLOTLY
+plotly_dark_template = {
+    'plot_bgcolor': 'rgba(15, 23, 42, 0.8)',
+    'paper_bgcolor': 'rgba(15, 23, 42, 0.5)',
+    'font': {'color': '#cbd5e1', 'family': 'Arial, sans-serif'},
+    'xaxis': {
+        'gridcolor': 'rgba(96, 165, 250, 0.1)',
+        'linecolor': 'rgba(96, 165, 250, 0.3)',
+        'zerolinecolor': 'rgba(96, 165, 250, 0.3)'
+    },
+    'yaxis': {
+        'gridcolor': 'rgba(96, 165, 250, 0.1)',
+        'linecolor': 'rgba(96, 165, 250, 0.3)',
+        'zerolinecolor': 'rgba(96, 165, 250, 0.3)'
+    }
+}
 
 # --------------------------------------------------
 # GRAFICO 1: ANDAMENTO TEMPORALE (SINISTRA)
@@ -415,10 +525,10 @@ with col_left:
             y=grouped["turni_richiesti"],
             mode='lines+markers',
             name='Turni Richiesti',
-            line=dict(color='#ef4444', width=3),
-            marker=dict(size=8),
+            line=dict(color='#ef4444', width=3, shape='spline'),
+            marker=dict(size=8, symbol='circle', line=dict(width=2, color='#7f1d1d')),
             fill='tozeroy',
-            fillcolor='rgba(239, 68, 68, 0.1)'
+            fillcolor='rgba(239, 68, 68, 0.15)'
         ),
         row=1, col=1
     )
@@ -429,16 +539,16 @@ with col_left:
             y=grouped["disponibili_netti"],
             mode='lines+markers',
             name='Disponibili Netti',
-            line=dict(color='#10b981', width=3),
-            marker=dict(size=8),
+            line=dict(color='#22c55e', width=3, shape='spline'),
+            marker=dict(size=8, symbol='circle', line=dict(width=2, color='#14532d')),
             fill='tozeroy',
-            fillcolor='rgba(16, 185, 129, 0.1)'
+            fillcolor='rgba(34, 197, 94, 0.15)'
         ),
         row=1, col=1
     )
     
     # Plot 2: Barre gap
-    colors = ['#dc2626' if g < soglia_gap else '#f97316' if g < 0 else '#22c55e' 
+    colors = ['#dc2626' if g < soglia_gap else '#fb923c' if g < 0 else '#22c55e' 
               for g in grouped["gap"]]
     
     fig_timeline.add_trace(
@@ -446,7 +556,10 @@ with col_left:
             x=grouped["giorno"],
             y=grouped["gap"],
             name="Gap",
-            marker_color=colors,
+            marker=dict(
+                color=colors,
+                line=dict(width=1, color='rgba(255,255,255,0.2)')
+            ),
             showlegend=False
         ),
         row=2, col=1
@@ -457,7 +570,9 @@ with col_left:
         y=soglia_gap, 
         line_dash="dash", 
         line_color="#dc2626",
+        line_width=2,
         annotation_text="Soglia Critica",
+        annotation_font_color="#fca5a5",
         row=2, col=1
     )
     
@@ -470,14 +585,16 @@ with col_left:
             yanchor="bottom",
             y=1.02,
             xanchor="right",
-            x=1
+            x=1,
+            bgcolor='rgba(15, 23, 42, 0.8)',
+            bordercolor='rgba(96, 165, 250, 0.3)',
+            borderwidth=1
         ),
-        plot_bgcolor='rgba(255,255,255,0.95)',
-        paper_bgcolor='rgba(255,255,255,0.95)'
+        **plotly_dark_template
     )
     
-    fig_timeline.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(0,0,0,0.1)')
-    fig_timeline.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(0,0,0,0.1)')
+    fig_timeline.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(96, 165, 250, 0.1)')
+    fig_timeline.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(96, 165, 250, 0.1)')
     
     st.plotly_chart(fig_timeline, use_container_width=True)
 
@@ -494,23 +611,31 @@ with col_right:
         mode="gauge+number+delta",
         value=gap_pct,
         domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': "Gap % su Turni", 'font': {'size': 18, 'color': '#1e3c72'}},
-        delta={'reference': 0, 'suffix': '%'},
-        number={'suffix': '%', 'font': {'size': 32, 'color': '#1e3c72'}},
+        title={
+            'text': "Gap % su Turni", 
+            'font': {'size': 18, 'color': '#93c5fd', 'family': 'Arial Black'}
+        },
+        delta={'reference': 0, 'suffix': '%', 'font': {'size': 20, 'color': '#cbd5e1'}},
+        number={'suffix': '%', 'font': {'size': 36, 'color': '#60a5fa', 'family': 'Arial Black'}},
         gauge={
-            'axis': {'range': [-20, 20], 'tickwidth': 2, 'tickcolor': "#1e3c72"},
-            'bar': {'color': "#1e3c72", 'thickness': 0.7},
-            'bgcolor': "white",
+            'axis': {
+                'range': [-20, 20], 
+                'tickwidth': 2, 
+                'tickcolor': "#60a5fa",
+                'tickfont': {'color': '#cbd5e1'}
+            },
+            'bar': {'color': "#3b82f6", 'thickness': 0.7},
+            'bgcolor': "rgba(15, 23, 42, 0.8)",
             'borderwidth': 3,
-            'bordercolor': "#1e3c72",
+            'bordercolor': "#60a5fa",
             'steps': [
-                {'range': [-20, -10], 'color': '#fca5a5'},
-                {'range': [-10, 0], 'color': '#fed7aa'},
-                {'range': [0, 10], 'color': '#bbf7d0'},
-                {'range': [10, 20], 'color': '#86efac'}
+                {'range': [-20, -10], 'color': 'rgba(220, 38, 38, 0.3)'},
+                {'range': [-10, 0], 'color': 'rgba(251, 146, 60, 0.3)'},
+                {'range': [0, 10], 'color': 'rgba(34, 197, 94, 0.3)'},
+                {'range': [10, 20], 'color': 'rgba(16, 185, 129, 0.3)'}
             ],
             'threshold': {
-                'line': {'color': "#dc2626", 'width': 4},
+                'line': {'color': "#ef4444", 'width': 4},
                 'thickness': 0.75,
                 'value': (soglia_gap / totale_turni * 100) if totale_turni > 0 else 0
             }
@@ -519,7 +644,8 @@ with col_right:
     
     fig_gauge.update_layout(
         height=280,
-        paper_bgcolor='rgba(255,255,255,0.95)',
+        paper_bgcolor='rgba(15, 23, 42, 0.5)',
+        font={'color': '#cbd5e1'},
         margin=dict(l=20, r=20, t=40, b=20)
     )
     
@@ -549,16 +675,21 @@ with col_right:
         fig_assenze = go.Figure(data=[go.Pie(
             labels=assenze_breakdown['Tipo'],
             values=assenze_breakdown['Totale'],
-            hole=.4,
-            marker_colors=['#ef4444', '#f97316', '#eab308', '#84cc16', '#06b6d4', '#8b5cf6'],
+            hole=.5,
+            marker=dict(
+                colors=['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6'],
+                line=dict(color='rgba(15, 23, 42, 0.8)', width=2)
+            ),
             textinfo='label+percent',
-            textfont=dict(size=11, color='white')
+            textfont=dict(size=12, color='white', family='Arial Black'),
+            hovertemplate='<b>%{label}</b><br>%{value} assenze<br>%{percent}<extra></extra>'
         )])
         
         fig_assenze.update_layout(
             height=280,
             showlegend=False,
-            paper_bgcolor='rgba(255,255,255,0.95)',
+            paper_bgcolor='rgba(15, 23, 42, 0.5)',
+            font={'color': '#cbd5e1'},
             margin=dict(l=0, r=0, t=0, b=0)
         )
         
@@ -588,25 +719,39 @@ if len(df_filtered) > 0:
         x=pivot_gap.columns,
         y=pivot_gap.index,
         colorscale=[
-            [0, '#dc2626'],
-            [0.45, '#f97316'],
+            [0, '#7f1d1d'],
+            [0.3, '#dc2626'],
+            [0.45, '#fb923c'],
             [0.5, '#fef3c7'],
             [0.55, '#86efac'],
-            [1, '#22c55e']
+            [0.7, '#22c55e'],
+            [1, '#14532d']
         ],
         zmid=0,
         text=pivot_gap.values,
         texttemplate='%{text:.0f}',
-        textfont={"size": 10},
-        colorbar=dict(title="Gap", titleside="right")
+        textfont={"size": 10, "color": "white"},
+        colorbar=dict(
+            title="Gap",
+            tickfont=dict(color='#cbd5e1'),
+            titlefont=dict(color='#93c5fd')
+        ),
+        hovertemplate='<b>%{y}</b><br>%{x}<br>Gap: %{z:.0f}<extra></extra>'
     ))
     
     fig_heatmap.update_layout(
         height=max(300, len(pivot_gap) * 40),
-        xaxis_title="Giorno",
-        yaxis_title="Deposito",
-        paper_bgcolor='rgba(255,255,255,0.95)',
-        plot_bgcolor='rgba(255,255,255,0.95)'
+        xaxis=dict(
+            title="Giorno",
+            titlefont=dict(color='#93c5fd'),
+            tickfont=dict(color='#cbd5e1')
+        ),
+        yaxis=dict(
+            title="Deposito",
+            titlefont=dict(color='#93c5fd'),
+            tickfont=dict(color='#cbd5e1')
+        ),
+        **plotly_dark_template
     )
     
     st.plotly_chart(fig_heatmap, use_container_width=True)
@@ -618,7 +763,7 @@ st.markdown("---")
 # --------------------------------------------------
 # ANALISI PER DEPOSITO
 # --------------------------------------------------
-st.markdown("### 🏢 RANKING DEPOSITI")
+st.markdown("### 🏢 RANKING DEPOSITI PER PERFORMANCE")
 
 if len(df_filtered) > 0:
     by_deposito = df_filtered.groupby("deposito").agg({
@@ -650,34 +795,51 @@ if len(df_filtered) > 0:
     # Grafico a barre orizzontali
     fig_depositi = go.Figure()
     
-    colors_dep = ['#dc2626' if g < soglia_gap else '#f97316' if g < 0 else '#22c55e' 
+    colors_dep = ['#dc2626' if g < soglia_gap else '#fb923c' if g < 0 else '#22c55e' 
                   for g in by_deposito["gap"]]
     
     fig_depositi.add_trace(go.Bar(
         y=by_deposito["deposito"],
         x=by_deposito["gap"],
         orientation='h',
-        marker=dict(color=colors_dep),
+        marker=dict(
+            color=colors_dep,
+            line=dict(width=1, color='rgba(255,255,255,0.2)')
+        ),
         text=by_deposito["gap"],
         textposition='outside',
         texttemplate='%{text:.0f}',
+        textfont=dict(color='#cbd5e1', size=12, family='Arial Black'),
         hovertemplate='<b>%{y}</b><br>Gap: %{x:.0f}<extra></extra>'
     ))
     
     fig_depositi.update_layout(
         height=max(400, len(by_deposito) * 35),
-        xaxis_title="Gap (positivo = eccedenza, negativo = deficit)",
-        yaxis_title="",
-        paper_bgcolor='rgba(255,255,255,0.95)',
-        plot_bgcolor='rgba(255,255,255,0.95)',
+        xaxis=dict(
+            title="Gap (positivo = eccedenza, negativo = deficit)",
+            titlefont=dict(color='#93c5fd', size=14),
+            tickfont=dict(color='#cbd5e1')
+        ),
+        yaxis=dict(
+            title="",
+            tickfont=dict(color='#cbd5e1', size=12)
+        ),
+        **plotly_dark_template,
         showlegend=False
     )
     
-    fig_depositi.add_vline(x=0, line_width=3, line_dash="dash", line_color="#1e3c72")
+    fig_depositi.add_vline(
+        x=0, 
+        line_width=3, 
+        line_dash="solid", 
+        line_color="#60a5fa",
+        annotation_text="Zero",
+        annotation_font_color="#93c5fd"
+    )
     
     st.plotly_chart(fig_depositi, use_container_width=True)
     
-    # Tabella depositi - SENZA background_gradient
+    # Tabella depositi
     st.dataframe(
         by_deposito[[
             "deposito", 
@@ -713,12 +875,13 @@ if len(df_filtered) > 0:
         path=['deposito', 'tipo_giorno'],
         values='turni_richiesti',
         color='turni_richiesti',
-        color_continuous_scale='Viridis'
+        color_continuous_scale='Blues'
     )
     
     fig_sunburst.update_layout(
         height=500,
-        paper_bgcolor='rgba(255,255,255,0.95)'
+        paper_bgcolor='rgba(15, 23, 42, 0.5)',
+        font={'color': '#cbd5e1', 'size': 12}
     )
     
     st.plotly_chart(fig_sunburst, use_container_width=True)
@@ -741,11 +904,14 @@ with st.expander("🔍 VISUALIZZA DATASET COMPLETO"):
 # --------------------------------------------------
 st.markdown("---")
 st.markdown(f"""
-<div style='text-align: center; color: white; padding: 20px;'>
-    <p style='font-size: 1em; font-weight: 600;'>
-        🚀 <b>Estate 2026 Executive Dashboard</b> | Powered by Streamlit + Supabase + Plotly
+<div style='text-align: center; padding: 30px;'>
+    <p style='font-size: 1.2em; font-weight: 700; color: #60a5fa; text-shadow: 0 0 10px rgba(96, 165, 250, 0.5);'>
+        🚀 ESTATE 2026 EXECUTIVE DASHBOARD
     </p>
-    <p style='font-size: 0.85em; opacity: 0.9;'>
+    <p style='font-size: 0.9em; color: #93c5fd; margin-top: 10px;'>
+        Powered by Streamlit + Supabase + Plotly
+    </p>
+    <p style='font-size: 0.85em; color: #64748b; margin-top: 5px;'>
         Ultimo aggiornamento: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
     </p>
 </div>
