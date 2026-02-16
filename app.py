@@ -467,7 +467,7 @@ st.markdown("### <i class='fas fa-chart-line'></i> KEY PERFORMANCE INDICATORS", 
 if len(df_filtered) > 0:
     # Calcoli
     giorni_analizzati = df_filtered['giorno'].nunique()
-    totale_dipendenti = df_depositi[df_depositi["deposito"].isin(deposito_sel)]["totale_dipendenti"].sum()
+    totale_dipendenti = df_depositi[df_depositi["deposito"].isin(deposito_sel)]["dipendenti_medi_giorno"].sum()
     disponibilita_media_giorno = df_filtered.groupby("giorno")["disponibili_netti"].sum().mean()
     gap_medio_giorno = df_filtered.groupby("giorno")["gap"].sum().mean()
     media_turni_giorno = df_filtered.groupby("giorno")["turni_richiesti"].sum().mean()
@@ -933,21 +933,22 @@ with tab3:
         
         st.dataframe(
             by_deposito[[
-                "deposito", "totale_dipendenti", "giorni_periodo",
-                "disponibili_netti", "assenze_previste",
-                "media_gap_giorno", "tasso_copertura_%"
-            ]].rename(columns={
-                "deposito": "Deposito",
-                "totale_dipendenti": "Autisti",
-                "giorni_periodo": "Giorni",
-                "disponibili_netti": "Disponibili",
-                "assenze_previste": "Assenze",
-                "media_gap_giorno": "Gap/Giorno",
-                "tasso_copertura_%": "Copertura %"
-            }),
-            use_container_width=True,
-            hide_index=True
-        )
+            "deposito", "dipendenti_medi_giorno", "giorni_periodo",
+            "disponibili_netti", "assenze_previste",
+            "media_gap_giorno", "tasso_copertura_%"
+        ]].rename(columns={
+            "deposito": "Deposito",
+            "dipendenti_medi_giorno": "Autisti medi",
+            "giorni_periodo": "Giorni",
+            "disponibili_netti": "Disponibili",
+            "assenze_previste": "Assenze",
+            "media_gap_giorno": "Gap/Giorno",
+            "tasso_copertura_%": "Copertura %"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
 
 # ==================== TAB 4: DEEP DIVE ====================
 with tab4:
