@@ -947,8 +947,10 @@ with tab3:
         st.markdown("#### <i class='fas fa-trophy'></i> Ranking Depositi", unsafe_allow_html=True)
         
         # Bar chart ranking
-       colors_dep = [
-            '#dc2626' if g < (soglia_gap / giorni_analizzati if giorni_analizzati > 0 else -999) 
+        soglia_per_deposito = (soglia_gap / giorni_analizzati) if giorni_analizzati > 0 else -999
+        
+        colors_dep = [
+            '#dc2626' if g < soglia_per_deposito 
             else '#fb923c' if g < 0 
             else '#22c55e' 
             for g in by_deposito["media_gap_giorno"]
@@ -1041,7 +1043,6 @@ with tab3:
             use_container_width=True,
             hide_index=True
         )
-
 # ==================== TAB 4: DEEP DIVE ====================
 with tab4:
     if len(df_filtered) > 0:
