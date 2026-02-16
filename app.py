@@ -31,14 +31,6 @@ st.set_page_config(
     page_icon="🚍"
 )
 
-# Dopo soglia_gap, ad esempio:
-ferie_10 = st.sidebar.checkbox(
-    "✅ Con 10 giornate di ferie (5 Ancona + 5 altri depositi)",
-    value=False,
-    help="Simula +10 assenze/giorno: 5 su Ancona e 5 distribuite sugli altri depositi (moie escluso) proporzionalmente agli autisti."
-)
-
-
 # CSS CUSTOM - PREMIUM DARK MODE
 st.markdown("""
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -481,6 +473,12 @@ with st.sidebar.expander("🔧 Filtri Avanzati"):
     show_insights = st.checkbox("💡 Mostra Insights AI", value=True)
     min_gap_filter = st.number_input("Gap Minimo", value=-100)
     max_gap_filter = st.number_input("Gap Massimo", value=100)
+    # Dopo soglia_gap, ad esempio:
+    ferie_10 = st.sidebar.checkbox(
+        "✅ Con 10 giornate di ferie (5 Ancona + 5 altri depositi)",
+        value=False,
+        help="Simula +10 assenze/giorno: 5 su Ancona e 5 distribuite sugli altri depositi (moie escluso) proporzionalmente agli autisti."
+)
 
 st.sidebar.markdown("---")
 
