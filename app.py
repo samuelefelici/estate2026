@@ -335,17 +335,13 @@ def load_data():
 
 @st.cache_data(ttl=600)
 def load_depositi_stats():
-    """Carica statistiche depositi"""
     query = """
-        SELECT 
-            deposito,
-            COUNT(DISTINCT data) as giorni_attivi,
-            COUNT(DISTINCT matricola) as totale_dipendenti
-        FROM roster
-        GROUP BY deposito
-        ORDER BY deposito;
+        select deposito, giorni_attivi, dipendenti_medi_giorno
+        from v_depositi_organico_medio
+        order by deposito;
     """
     return pd.read_sql(query, conn)
+
 
 # Carica dati
 try:
