@@ -31,6 +31,14 @@ st.set_page_config(
     page_icon="🚍"
 )
 
+# Dopo soglia_gap, ad esempio:
+ferie_10 = st.sidebar.checkbox(
+    "✅ Con 10 giornate di ferie (5 Ancona + 5 altri depositi)",
+    value=False,
+    help="Simula +10 assenze/giorno: 5 su Ancona e 5 distribuite sugli altri depositi (moie escluso) proporzionalmente agli autisti."
+)
+
+
 # CSS CUSTOM - PREMIUM DARK MODE
 st.markdown("""
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -367,6 +375,60 @@ def categorizza_tipo_giorno(tipo: str) -> str:
         return 'Domenica'
     return tipo
 
+def applica_ferie_10gg(df_in: pd.DataFrame) -> pd.DataFrame:
+    """
+    Se attivo: aggiunge +10 assenze al giorno:
+      - +5 su deposito 'ancona'
+      - +5 distribuite su tutti gli altri depositi, escluso 'moie'
+    Distribuzione pesata sugli autisti effettivi (totale_autisti) per quel giorno.
+    """
+    df = df_in.copy()
+
+    # Colonne base (se non esistono -> errore esplicito)
+    required = {"giorno", "deposito", "totale_autisti", "assenze_previste", "disponibili_netti", "gap"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Mancano colonne per ricalcolo ferie: {missing}")
+
+    # Normalizza per sicurezza
+    df["deposito_norm"] = df["deposito"].astype(str).str.strip().str.lower()
+
+    # Inizializza extra ferie
+    df["ferie_extra"] = 0.0
+
+    # +5 su Ancona (per ogni giorno)
+    mask_ancona = df["deposito_norm"] == "ancona"
+    df.loc[mask_ancona, "ferie_extra"] += 5.0
+
+    # Distribuzione degli altri 5: tutti tranne ancona e moie
+    mask_eligible = (~df["deposito_norm"].isin(["ancona", "moie"]))  # moie escluso
+    eligible = df[mask_eligible].copy()
+
+    if not eligible.empty:
+        # Peso = autisti effettivi per quel giorno e deposito
+        # (Se totale_autisti è 0, quel deposito non prende quota quel giorno)
+        eligible["peso"] = eligible["totale_autisti"].clip(lower=0)
+
+        # Somma pesi per giorno
+        sum_pesi = eligible.groupby("giorno")["peso"].transform("sum")
+
+        # Quota giornaliera (5 * peso/somma_pesi). Se somma_pesi=0 -> 0
+        eligible["quota_ferie"] = np.where(sum_pesi > 0, 5.0 * eligible["peso"] / sum_pesi, 0.0)
+
+        # Scrivi nel df principale
+        df.loc[eligible.index, "ferie_extra"] += eligible["quota_ferie"].values
+
+    # Ricalcoli: assenze_previste, disponibili_netti, gap
+    df["assenze_previste_adj"] = df["assenze_previste"] + df["ferie_extra"]
+    df["disponibili_netti_adj"] = (df["disponibili_netti"] - df["ferie_extra"]).clip(lower=0)
+    df["gap_adj"] = df["gap"] - df["ferie_extra"]
+
+    # Pulizia colonna helper
+    df.drop(columns=["deposito_norm"], inplace=True)
+
+    return df
+
+
 
 df['categoria_giorno'] = df['tipo_giorno'].apply(categorizza_tipo_giorno)
 
@@ -437,6 +499,19 @@ else:
         (df["gap"] >= min_gap_filter) &
         (df["gap"] <= max_gap_filter)
     ].copy()
+
+df_work = df_filtered.copy()
+
+if ferie_10:
+    df_work = applica_ferie_10gg(df_work)
+
+    # Usa le colonne *_adj come colonne operative (così non devi riscrivere mezzo codice)
+    df_work["assenze_previste"] = df_work["assenze_previste_adj"]
+    df_work["disponibili_netti"] = df_work["disponibili_netti_adj"]
+    df_work["gap"] = df_work["gap_adj"]
+
+df_filtered = df_work
+
 
 # --------------------------------------------------
 # HEADER PREMIUM
