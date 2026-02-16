@@ -361,14 +361,16 @@ except Exception as e:
     st.stop()
 
 # Funzione categorizzazione
-def categorizza_tipo_giorno(tipo):
-    if tipo in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']:
+def categorizza_tipo_giorno(tipo: str) -> str:
+    t = (tipo or "").strip().lower()
+    if t in ['lunedi','martedi','mercoledi','giovedi','venerdi']:
         return 'Lu-Ve'
-    elif tipo == 'Saturday':
+    elif t == 'sabato':
         return 'Sabato'
-    elif tipo == 'Sunday':
+    elif t == 'domenica':
         return 'Domenica'
     return tipo
+
 
 df['categoria_giorno'] = df['tipo_giorno'].apply(categorizza_tipo_giorno)
 
