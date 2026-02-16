@@ -467,49 +467,49 @@ soglia_gap = st.sidebar.slider(
     help="Gap sotto questa soglia è critico"
 )
 
+# Toggle ferie PRIMA dei filtri avanzati
+ferie_10 = st.sidebar.checkbox(
+    "✅ Con 10 giornate di ferie (5 Ancona + 5 altri depositi)",
+    value=False,
+    help="Simula +10 assenze/giorno: 5 su Ancona e 5 distribuite sugli altri depositi (moie escluso) proporzionalmente agli autisti."
+)
+
 # Filtri avanzati in expander
 with st.sidebar.expander("🔧 Filtri Avanzati"):
     show_forecast = st.checkbox("📈 Mostra Previsioni", value=True)
     show_insights = st.checkbox("💡 Mostra Insights AI", value=True)
     min_gap_filter = st.number_input("Gap Minimo", value=-100)
     max_gap_filter = st.number_input("Gap Massimo", value=100)
-    # Dopo soglia_gap, ad esempio:
-    ferie_10 = st.sidebar.checkbox(
-        "✅ Con 10 giornate di ferie (5 Ancona + 5 altri depositi)",
-        value=False,
-        help="Simula +10 assenze/giorno: 5 su Ancona e 5 distribuite sugli altri depositi (moie escluso) proporzionalmente agli autisti."
-)
 
 st.sidebar.markdown("---")
 
-# Applica filtri
+# Applica filtri BASE prima delle ferie
 if len(date_range) == 2:
     df_filtered = df[
         (df["deposito"].isin(deposito_sel)) &
         (df["giorno"] >= pd.to_datetime(date_range[0])) &
-        (df["giorno"] <= pd.to_datetime(date_range[1])) &
-        (df["gap"] >= min_gap_filter) &
-        (df["gap"] <= max_gap_filter)
+        (df["giorno"] <= pd.to_datetime(date_range[1]))
     ].copy()
 else:
-    df_filtered = df[
-        (df["deposito"].isin(deposito_sel)) &
-        (df["gap"] >= min_gap_filter) &
-        (df["gap"] <= max_gap_filter)
-    ].copy()
+    df_filtered = df[df["deposito"].isin(deposito_sel)].copy()
 
-df_work = df_filtered.copy()
-
+# Applica ferie SE il toggle è attivo
 if ferie_10:
-    df_work = applica_ferie_10gg(df_work)
+    try:
+        df_filtered = applica_ferie_10gg(df_filtered)
+        # Usa le colonne adjusted
+        df_filtered["assenze_previste"] = df_filtered["assenze_previste_adj"]
+        df_filtered["disponibili_netti"] = df_filtered["disponibili_netti_adj"]
+        df_filtered["gap"] = df_filtered["gap_adj"]
+    except Exception as e:
+        st.error(f"❌ Errore applicazione ferie: {e}")
+        st.stop()
 
-    # Usa le colonne *_adj come colonne operative (così non devi riscrivere mezzo codice)
-    df_work["assenze_previste"] = df_work["assenze_previste_adj"]
-    df_work["disponibili_netti"] = df_work["disponibili_netti_adj"]
-    df_work["gap"] = df_work["gap_adj"]
-
-df_filtered = df_work
-
+# Applica filtri gap DOPO le ferie
+df_filtered = df_filtered[
+    (df_filtered["gap"] >= min_gap_filter) &
+    (df_filtered["gap"] <= max_gap_filter)
+].copy()
 
 # --------------------------------------------------
 # HEADER PREMIUM
@@ -526,7 +526,8 @@ if len(date_range) == 2:
         f"<p style='text-align: center; color: #93c5fd; font-size: 1.2rem; font-weight: 600;'>"
         f"<i class='far fa-calendar-alt'></i> {date_range[0].strftime('%d/%m/%Y')} → {date_range[1].strftime('%d/%m/%Y')} | "
         f"<i class='fas fa-building'></i> {len(deposito_sel)} Depositi | "
-        f"<i class='fas fa-database'></i> {len(df_filtered):,} Records</p>",
+        f"<i class='fas fa-database'></i> {len(df_filtered):,} Records"
+        f"{' | 🏖️ CON SIMULAZIONE FERIE' if ferie_10 else ''}</p>",
         unsafe_allow_html=True
     )
 
@@ -544,14 +545,17 @@ if len(df_filtered) > 0:
     disponibilita_media_giorno = df_filtered.groupby("giorno")["disponibili_netti"].sum().mean()
     gap_medio_giorno = df_filtered.groupby("giorno")["gap"].sum().mean()
     media_turni_giorno = df_filtered.groupby("giorno")["turni_richiesti"].sum().mean()
+    
+    # PROTEZIONE DIVISIONE PER ZERO
     gap_pct_medio = (gap_medio_giorno / media_turni_giorno * 100) if media_turni_giorno > 0 else 0
+    
     gap_per_giorno = df_filtered.groupby("giorno")["gap"].sum()
     giorni_critici_count = (gap_per_giorno < soglia_gap).sum()
     pct_critici = (giorni_critici_count / giorni_analizzati * 100) if giorni_analizzati > 0 else 0
     
     # Statistiche assenze
     totale_assenze = df_filtered['assenze_previste'].sum()
-    tasso_assenze = (totale_assenze / (totale_dipendenti * giorni_analizzati) * 100) if totale_dipendenti > 0 else 0
+    tasso_assenze = (totale_assenze / (totale_dipendenti * giorni_analizzati) * 100) if (totale_dipendenti > 0 and giorni_analizzati > 0) else 0
     
     # KPI Row
     kpi1, kpi2, kpi3, kpi4, kpi5, kpi6 = st.columns(6)
@@ -588,38 +592,40 @@ if show_insights and len(df_filtered) > 0:
     with insights_col1:
         # Insight 1: Deposito più critico
         by_dep = df_filtered.groupby("deposito")["gap"].mean()
-        worst_dep = by_dep.idxmin()
-        worst_gap = by_dep.min()
-        
-        st.markdown(f"""
-        <div class='insight-card'>
-            <h4><i class='fas fa-exclamation-triangle'></i> Deposito Critico</h4>
-            <p style='font-size: 1.1rem; margin: 0;'>
-                <b>{worst_dep}</b> ha il gap medio peggiore: <b>{worst_gap:.1f}</b>
-            </p>
-            <p style='font-size: 0.9rem; color: #fed7aa; margin-top: 10px;'>
-                💡 Considera redistribuzione turni o assunzioni
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        if len(by_dep) > 0:
+            worst_dep = by_dep.idxmin()
+            worst_gap = by_dep.min()
+            
+            st.markdown(f"""
+            <div class='insight-card'>
+                <h4><i class='fas fa-exclamation-triangle'></i> Deposito Critico</h4>
+                <p style='font-size: 1.1rem; margin: 0;'>
+                    <b>{worst_dep}</b> ha il gap medio peggiore: <b>{worst_gap:.1f}</b>
+                </p>
+                <p style='font-size: 0.9rem; color: #fed7aa; margin-top: 10px;'>
+                    💡 Considera redistribuzione turni o assunzioni
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
     
     with insights_col2:
         # Insight 2: Giorno più problematico
         by_cat = df_filtered.groupby("categoria_giorno")["gap"].mean()
-        worst_cat = by_cat.idxmin()
-        worst_cat_gap = by_cat.min()
-        
-        st.markdown(f"""
-        <div class='insight-card'>
-            <h4><i class='fas fa-calendar-times'></i> Giorno Critico</h4>
-            <p style='font-size: 1.1rem; margin: 0;'>
-                <b>{worst_cat}</b> ha il gap medio peggiore: <b>{worst_cat_gap:.1f}</b>
-            </p>
-            <p style='font-size: 0.9rem; color: #fed7aa; margin-top: 10px;'>
-                💡 Pianifica turni extra per questi giorni
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        if len(by_cat) > 0:
+            worst_cat = by_cat.idxmin()
+            worst_cat_gap = by_cat.min()
+            
+            st.markdown(f"""
+            <div class='insight-card'>
+                <h4><i class='fas fa-calendar-times'></i> Giorno Critico</h4>
+                <p style='font-size: 1.1rem; margin: 0;'>
+                    <b>{worst_cat}</b> ha il gap medio peggiore: <b>{worst_cat_gap:.1f}</b>
+                </p>
+                <p style='font-size: 0.9rem; color: #fed7aa; margin-top: 10px;'>
+                    💡 Pianifica turni extra per questi giorni
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
     
     with insights_col3:
         # Insight 3: Trend assenze
@@ -644,6 +650,34 @@ if show_insights and len(df_filtered) > 0:
         """, unsafe_allow_html=True)
     
     st.markdown("---")
+
+# --------------------------------------------------
+# CALCOLO by_deposito GLOBALE (usato in più tab)
+# --------------------------------------------------
+if len(df_filtered) > 0:
+    by_deposito = df_filtered.groupby("deposito").agg({
+        "turni_richiesti": "sum",
+        "disponibili_netti": "sum",
+        "gap": "sum",
+        "assenze_previste": "sum"
+    }).reset_index()
+    
+    by_deposito = by_deposito.merge(df_depositi, on="deposito", how="left")
+    
+    giorni_per_dep = df_filtered.groupby("deposito")["giorno"].nunique()
+    by_deposito = by_deposito.merge(
+        giorni_per_dep.rename("giorni_periodo"),
+        left_on="deposito", right_index=True
+    )
+    
+    by_deposito["media_gap_giorno"] = (by_deposito["gap"] / by_deposito["giorni_periodo"]).round(1)
+    by_deposito["tasso_copertura_%"] = (
+        (by_deposito["disponibili_netti"] / by_deposito["turni_richiesti"] * 100).fillna(0).round(1)
+    )
+    
+    by_deposito = by_deposito.sort_values("media_gap_giorno")
+else:
+    by_deposito = pd.DataFrame()
 
 # --------------------------------------------------
 # TABS ORGANIZATION
@@ -728,11 +762,9 @@ with tab1:
         with col_side:
             st.markdown("#### <i class='fas fa-tachometer-alt'></i> Stato Copertura", unsafe_allow_html=True)
             
-            gap_pct = (gap_medio_giorno / media_turni_giorno * 100) if media_turni_giorno > 0 else 0
-            
             fig_gauge = go.Figure(go.Indicator(
                 mode="gauge+number+delta",
-                value=gap_pct,
+                value=gap_pct_medio,
                 domain={'x': [0, 1], 'y': [0, 1]},
                 title={'text': "Gap % Medio", 'font': {'size': 16, 'color': '#93c5fd'}},
                 delta={'reference': 0, 'suffix': '%'},
@@ -800,22 +832,23 @@ with tab1:
             aggfunc='sum', fill_value=0
         )
         
-        fig_heat = go.Figure(go.Heatmap(
-            z=pivot_gap.values, x=pivot_gap.columns, y=pivot_gap.index,
-            colorscale=[
-                [0, '#7f1d1d'], [0.3, '#dc2626'], [0.45, '#fb923c'],
-                [0.5, '#fef3c7'], [0.55, '#86efac'], [0.7, '#22c55e'], [1, '#14532d']
-            ],
-            zmid=0, text=pivot_gap.values, texttemplate='%{text:.0f}',
-            colorbar=dict(title="Gap")
-        ))
-        
-        fig_heat.update_layout(
-            height=max(300, len(pivot_gap) * 40),
-            **plotly_template
-        )
-        
-        st.plotly_chart(fig_heat, use_container_width=True)
+        if len(pivot_gap) > 0:
+            fig_heat = go.Figure(go.Heatmap(
+                z=pivot_gap.values, x=pivot_gap.columns, y=pivot_gap.index,
+                colorscale=[
+                    [0, '#7f1d1d'], [0.3, '#dc2626'], [0.45, '#fb923c'],
+                    [0.5, '#fef3c7'], [0.55, '#86efac'], [0.7, '#22c55e'], [1, '#14532d']
+                ],
+                zmid=0, text=pivot_gap.values, texttemplate='%{text:.0f}',
+                colorbar=dict(title="Gap")
+            ))
+            
+            fig_heat.update_layout(
+                height=max(300, len(pivot_gap) * 40),
+                **plotly_template
+            )
+            
+            st.plotly_chart(fig_heat, use_container_width=True)
 
 # ==================== TAB 2: TREND ANALYSIS ====================
 with tab2:
@@ -861,11 +894,12 @@ with tab2:
         
         for dep in deposito_sel:
             dep_data = df_filtered[df_filtered['deposito'] == dep]['gap']
-            fig_box.add_trace(go.Box(
-                y=dep_data, name=dep,
-                marker_color='#3b82f6',
-                boxmean='sd'
-            ))
+            if len(dep_data) > 0:
+                fig_box.add_trace(go.Box(
+                    y=dep_data, name=dep,
+                    marker_color='#3b82f6',
+                    boxmean='sd'
+                ))
         
         fig_box.update_layout(
             height=450,
@@ -909,33 +943,11 @@ with tab2:
 
 # ==================== TAB 3: DEPOSITI ====================
 with tab3:
-    if len(df_filtered) > 0:
+    if len(df_filtered) > 0 and len(by_deposito) > 0:
         st.markdown("#### <i class='fas fa-trophy'></i> Ranking Depositi", unsafe_allow_html=True)
         
-        by_deposito = df_filtered.groupby("deposito").agg({
-            "turni_richiesti": "sum",
-            "disponibili_netti": "sum",
-            "gap": "sum",
-            "assenze_previste": "sum"
-        }).reset_index()
-        
-        by_deposito = by_deposito.merge(df_depositi, on="deposito", how="left")
-        
-        giorni_per_dep = df_filtered.groupby("deposito")["giorno"].nunique()
-        by_deposito = by_deposito.merge(
-            giorni_per_dep.rename("giorni_periodo"),
-            left_on="deposito", right_index=True
-        )
-        
-        by_deposito["media_gap_giorno"] = (by_deposito["gap"] / by_deposito["giorni_periodo"]).round(1)
-        by_deposito["tasso_copertura_%"] = (
-            (by_deposito["disponibili_netti"] / by_deposito["turni_richiesti"] * 100).fillna(0).round(1)
-        )
-        
-        by_deposito = by_deposito.sort_values("media_gap_giorno")
-        
         # Bar chart ranking
-        colors_dep = ['#dc2626' if g < (soglia_gap / giorni_analizzati) else '#fb923c' if g < 0 else '#22c55e' 
+        colors_dep = ['#dc2626' if g < (soglia_gap / giorni_analizzati) if giorni_analizzati > 0 else 0 else '#fb923c' if g < 0 else '#22c55e' 
                       for g in by_deposito["media_gap_giorno"]]
         
         fig_dep = go.Figure(go.Bar(
@@ -967,6 +979,8 @@ with tab3:
             max_val = by_deposito_norm[col].max()
             if max_val > 0:
                 by_deposito_norm[f'{col}_norm'] = by_deposito_norm[col] / max_val * 100
+            else:
+                by_deposito_norm[f'{col}_norm'] = 0
         
         fig_radar = go.Figure()
         
@@ -974,19 +988,21 @@ with tab3:
         top_deps = by_deposito.head(5)
         
         for _, row in top_deps.iterrows():
-            r_values = [
-                by_deposito_norm[by_deposito_norm['deposito'] == row['deposito']]['turni_richiesti_norm'].values[0],
-                by_deposito_norm[by_deposito_norm['deposito'] == row['deposito']]['disponibili_netti_norm'].values[0],
-                100 - (by_deposito_norm[by_deposito_norm['deposito'] == row['deposito']]['assenze_previste_norm'].values[0]),
-                row['tasso_copertura_%']
-            ]
-            
-            fig_radar.add_trace(go.Scatterpolar(
-                r=r_values,
-                theta=['Turni Richiesti', 'Disponibili', 'Presenza', 'Copertura %'],
-                fill='toself',
-                name=row['deposito']
-            ))
+            dep_norm = by_deposito_norm[by_deposito_norm['deposito'] == row['deposito']]
+            if len(dep_norm) > 0:
+                r_values = [
+                    dep_norm['turni_richiesti_norm'].values[0],
+                    dep_norm['disponibili_netti_norm'].values[0],
+                    100 - dep_norm['assenze_previste_norm'].values[0],
+                    row['tasso_copertura_%']
+                ]
+                
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=r_values,
+                    theta=['Turni Richiesti', 'Disponibili', 'Presenza', 'Copertura %'],
+                    fill='toself',
+                    name=row['deposito']
+                ))
         
         fig_radar.update_layout(
             polar=dict(
@@ -1006,22 +1022,21 @@ with tab3:
         
         st.dataframe(
             by_deposito[[
-            "deposito", "dipendenti_medi_giorno", "giorni_periodo",
-            "disponibili_netti", "assenze_previste",
-            "media_gap_giorno", "tasso_copertura_%"
-        ]].rename(columns={
-            "deposito": "Deposito",
-            "dipendenti_medi_giorno": "Autisti medi",
-            "giorni_periodo": "Giorni",
-            "disponibili_netti": "Disponibili",
-            "assenze_previste": "Assenze",
-            "media_gap_giorno": "Gap/Giorno",
-            "tasso_copertura_%": "Copertura %"
-        }),
-        use_container_width=True,
-        hide_index=True
-    )
-
+                "deposito", "dipendenti_medi_giorno", "giorni_periodo",
+                "disponibili_netti", "assenze_previste",
+                "media_gap_giorno", "tasso_copertura_%"
+            ]].rename(columns={
+                "deposito": "Deposito",
+                "dipendenti_medi_giorno": "Autisti medi",
+                "giorni_periodo": "Giorni",
+                "disponibili_netti": "Disponibili",
+                "assenze_previste": "Assenze",
+                "media_gap_giorno": "Gap/Giorno",
+                "tasso_copertura_%": "Copertura %"
+            }),
+            use_container_width=True,
+            hide_index=True
+        )
 
 # ==================== TAB 4: DEEP DIVE ====================
 with tab4:
@@ -1035,16 +1050,17 @@ with tab4:
             "turni_richiesti": "sum"
         }).reset_index()
         
-        fig_sun = px.sunburst(
-            df_sunburst,
-            path=['deposito', 'categoria_giorno'],
-            values='turni_richiesti',
-            color='turni_richiesti',
-            color_continuous_scale='Blues'
-        )
-        
-        fig_sun.update_layout(height=500, paper_bgcolor='rgba(15, 23, 42, 0.5)')
-        st.plotly_chart(fig_sun, use_container_width=True)
+        if len(df_sunburst) > 0:
+            fig_sun = px.sunburst(
+                df_sunburst,
+                path=['deposito', 'categoria_giorno'],
+                values='turni_richiesti',
+                color='turni_richiesti',
+                color_continuous_scale='Blues'
+            )
+            
+            fig_sun.update_layout(height=500, paper_bgcolor='rgba(15, 23, 42, 0.5)')
+            st.plotly_chart(fig_sun, use_container_width=True)
         
         # Matrice di Correlazione
         st.markdown("---")
@@ -1115,7 +1131,7 @@ with tab5:
             # Sheet 1: Dati
             df_export.to_excel(writer, sheet_name='Dati', index=False)
             
-            # Sheet 2: Statistiche per deposito
+            # Sheet 2: Statistiche per deposito (solo se disponibile)
             if len(by_deposito) > 0:
                 by_deposito.to_excel(writer, sheet_name='Per_Deposito', index=False)
         
