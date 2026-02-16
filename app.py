@@ -947,8 +947,12 @@ with tab3:
         st.markdown("#### <i class='fas fa-trophy'></i> Ranking Depositi", unsafe_allow_html=True)
         
         # Bar chart ranking
-        colors_dep = ['#dc2626' if g < (soglia_gap / giorni_analizzati) if giorni_analizzati > 0 else 0 else '#fb923c' if g < 0 else '#22c55e' 
-                      for g in by_deposito["media_gap_giorno"]]
+       colors_dep = [
+            '#dc2626' if g < (soglia_gap / giorni_analizzati if giorni_analizzati > 0 else -999) 
+            else '#fb923c' if g < 0 
+            else '#22c55e' 
+            for g in by_deposito["media_gap_giorno"]
+        ]
         
         fig_dep = go.Figure(go.Bar(
             y=by_deposito["deposito"], x=by_deposito["media_gap_giorno"],
