@@ -261,6 +261,185 @@ if not check_password():
     st.stop()
 
 
+
+# --------------------------------------------------
+# PLASMA SPLASH SCREEN (solo al primo accesso)
+# --------------------------------------------------
+if not st.session_state.get("splash_done"):
+    st.session_state["splash_done"] = True
+    st.markdown("""
+<style>
+[data-testid="stSidebar"]{display:none!important}
+[data-testid="stHeader"]{display:none!important}
+footer{display:none!important}
+.block-container{padding:0!important;max-width:100%!important}
+.stApp{background:#020b18!important;overflow:hidden}
+
+@keyframes corePulse{
+  0%,100%{transform:translate(-50%,-50%) scale(1);
+    box-shadow:0 0 30px 8px rgba(96,165,250,0.7),0 0 80px 30px rgba(37,99,235,0.3),0 0 0 0 rgba(255,255,255,0.4)}
+  50%{transform:translate(-50%,-50%) scale(1.15);
+    box-shadow:0 0 55px 18px rgba(96,165,250,0.9),0 0 130px 55px rgba(37,99,235,0.5),0 0 0 8px rgba(255,255,255,0.05)}}
+
+@keyframes spin1{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes spin2{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(-360deg)}}
+@keyframes spin3{from{transform:translate(-50%,-50%) rotate(45deg)}to{transform:translate(-50%,-50%) rotate(405deg)}}
+
+@keyframes orb1{from{transform:rotate(0deg) translateX(105px) rotate(0deg)}to{transform:rotate(360deg) translateX(105px) rotate(-360deg)}}
+@keyframes orb2{from{transform:rotate(120deg) translateX(160px) rotate(-120deg)}to{transform:rotate(480deg) translateX(160px) rotate(-480deg)}}
+@keyframes orb3{from{transform:rotate(240deg) translateX(215px) rotate(-240deg)}to{transform:rotate(600deg) translateX(215px) rotate(-600deg)}}
+@keyframes orb4{from{transform:rotate(60deg) translateX(260px) rotate(-60deg)}to{transform:rotate(420deg) translateX(260px) rotate(-420deg)}}
+@keyframes orb5{from{transform:rotate(180deg) translateX(105px) rotate(-180deg)}to{transform:rotate(540deg) translateX(105px) rotate(-540deg)}}
+
+@keyframes blobFloat{
+  0%,100%{transform:translate(-50%,-50%) scale(1) rotate(0deg);opacity:0.5}
+  33%{transform:translate(-50%,-50%) scale(1.2) rotate(120deg);opacity:0.8}
+  66%{transform:translate(-50%,-50%) scale(0.9) rotate(240deg);opacity:0.6}}
+
+@keyframes blobFloat2{
+  0%,100%{transform:translate(-50%,-50%) scale(1.1) rotate(0deg);opacity:0.4}
+  50%{transform:translate(-50%,-50%) scale(0.85) rotate(-180deg);opacity:0.7}}
+
+@keyframes fadeOutSplash{0%,80%{opacity:1}100%{opacity:0}}
+@keyframes progressFill{from{width:0%}to{width:100%}}
+@keyframes textPulse{0%,100%{opacity:0.4;letter-spacing:3px}50%{opacity:1;letter-spacing:5px}}
+@keyframes gridPulse{0%,100%{opacity:0.04}50%{opacity:0.1}}
+@keyframes starTwinkle{0%,100%{opacity:0.1}50%{opacity:0.8}}
+
+.sp-wrap{
+  position:fixed;inset:0;z-index:99999;
+  background:#020b18;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  animation:fadeOutSplash 3.6s ease forwards}
+
+.sp-wrap::before{
+  content:'';position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(59,130,246,0.05) 1px,transparent 1px);
+  background-size:48px 48px;
+  animation:gridPulse 4s ease-in-out infinite}
+
+.sp-star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;animation:starTwinkle ease-in-out infinite}
+
+.sp-arena{position:relative;width:580px;height:580px;flex-shrink:0}
+
+/* Anelli rotanti */
+.sp-ring{position:absolute;top:50%;left:50%;border-radius:50%}
+.sp-ring-1{
+  width:520px;height:520px;margin:-260px 0 0 -260px;
+  border:1.5px solid transparent;
+  border-top:1.5px solid rgba(59,130,246,0.8);
+  border-right:1.5px solid rgba(59,130,246,0.2);
+  box-shadow:0 0 15px rgba(59,130,246,0.15);
+  animation:spin1 3s linear infinite}
+.sp-ring-2{
+  width:410px;height:410px;margin:-205px 0 0 -205px;
+  border:1px solid transparent;
+  border-top:1px solid rgba(147,197,253,0.6);
+  border-left:1px solid rgba(147,197,253,0.3);
+  animation:spin2 2s linear infinite}
+.sp-ring-3{
+  width:310px;height:310px;margin:-155px 0 0 -155px;
+  border:2px solid transparent;
+  border-bottom:2px solid rgba(37,99,235,0.7);
+  border-right:2px solid rgba(96,165,250,0.4);
+  animation:spin3 4s linear infinite}
+.sp-ring-4{
+  width:220px;height:220px;margin:-110px 0 0 -110px;
+  border:1px solid transparent;
+  border-top:1px solid rgba(167,139,250,0.5);
+  border-right:1px solid rgba(167,139,250,0.2);
+  animation:spin1 1.5s linear infinite reverse}
+
+/* Blob plasma */
+.sp-blob{position:absolute;top:50%;left:50%;border-radius:50%;pointer-events:none}
+.sp-blob-1{
+  width:380px;height:220px;margin:-110px 0 0 -190px;
+  background:radial-gradient(ellipse,rgba(37,99,235,0.22) 0%,transparent 70%);
+  animation:blobFloat 5s ease-in-out infinite}
+.sp-blob-2{
+  width:220px;height:380px;margin:-190px 0 0 -110px;
+  background:radial-gradient(ellipse,rgba(96,165,250,0.15) 0%,transparent 70%);
+  animation:blobFloat2 6s ease-in-out infinite}
+.sp-blob-3{
+  width:300px;height:300px;margin:-150px 0 0 -150px;
+  background:radial-gradient(circle,rgba(167,139,250,0.08) 0%,transparent 65%);
+  animation:blobFloat 7s ease-in-out infinite reverse}
+
+/* Nucleo */
+.sp-core{
+  position:absolute;top:50%;left:50%;
+  width:44px;height:44px;margin:-22px 0 0 -22px;
+  border-radius:50%;
+  background:radial-gradient(circle,#ffffff 0%,#bfdbfe 35%,#3b82f6 70%,#1d4ed8 100%);
+  animation:corePulse 2s ease-in-out infinite;
+  z-index:20}
+
+/* Particelle */
+.sp-orb{position:absolute;top:50%;left:50%;border-radius:50%}
+.sp-orb-1{width:10px;height:10px;margin:-5px 0 0 -5px;background:#60a5fa;box-shadow:0 0 12px 4px rgba(96,165,250,0.9);animation:orb1 2.2s linear infinite}
+.sp-orb-2{width:8px;height:8px;margin:-4px 0 0 -4px;background:#ef4444;box-shadow:0 0 10px 3px rgba(239,68,68,0.9);animation:orb2 3.3s linear infinite}
+.sp-orb-3{width:7px;height:7px;margin:-3.5px 0 0 -3.5px;background:#22c55e;box-shadow:0 0 10px 3px rgba(34,197,94,0.9);animation:orb3 4.4s linear infinite}
+.sp-orb-4{width:6px;height:6px;margin:-3px 0 0 -3px;background:#a78bfa;box-shadow:0 0 8px 3px rgba(167,139,250,0.9);animation:orb4 5.5s linear infinite}
+.sp-orb-5{width:9px;height:9px;margin:-4.5px 0 0 -4.5px;background:#38bdf8;box-shadow:0 0 10px 3px rgba(56,189,248,0.9);animation:orb5 1.8s linear infinite}
+
+/* Testo */
+.sp-text{margin-top:-30px;text-align:center;z-index:10}
+.sp-label{
+  color:#64748b;font-size:0.68rem;
+  letter-spacing:3px;text-transform:uppercase;
+  margin:0 0 14px;
+  animation:textPulse 2s ease-in-out infinite}
+.sp-bar-wrap{width:220px;height:2px;background:rgba(59,130,246,0.1);border-radius:2px;margin:0 auto;overflow:hidden}
+.sp-bar{
+  height:100%;
+  background:linear-gradient(90deg,#1d4ed8,#60a5fa,#1d4ed8);
+  background-size:200% 100%;
+  animation:progressFill 3.2s cubic-bezier(.4,0,.2,1) forwards;
+  box-shadow:0 0 8px rgba(96,165,250,0.8)}
+</style>
+
+<div class="sp-wrap">
+  <!-- Stelle -->
+  <div class="sp-star" style="top:7%;left:12%;animation-duration:2.8s;animation-delay:0s"></div>
+  <div class="sp-star" style="top:18%;left:81%;animation-duration:4s;animation-delay:.8s"></div>
+  <div class="sp-star" style="top:72%;left:91%;animation-duration:3.2s;animation-delay:.3s"></div>
+  <div class="sp-star" style="top:85%;left:7%;animation-duration:5s;animation-delay:1.5s"></div>
+  <div class="sp-star" style="top:55%;left:4%;animation-duration:2.5s;animation-delay:2s"></div>
+  <div class="sp-star" style="top:32%;left:95%;animation-duration:3.8s;animation-delay:.5s"></div>
+  <div class="sp-star" style="top:91%;left:58%;animation-duration:4.5s;animation-delay:1s"></div>
+  <div class="sp-star" style="top:14%;left:45%;animation-duration:3s;animation-delay:2.5s"></div>
+
+  <div class="sp-arena">
+    <div class="sp-blob sp-blob-1"></div>
+    <div class="sp-blob sp-blob-2"></div>
+    <div class="sp-blob sp-blob-3"></div>
+    <div class="sp-ring sp-ring-1"></div>
+    <div class="sp-ring sp-ring-2"></div>
+    <div class="sp-ring sp-ring-3"></div>
+    <div class="sp-ring sp-ring-4"></div>
+    <div class="sp-orb sp-orb-1"></div>
+    <div class="sp-orb sp-orb-2"></div>
+    <div class="sp-orb sp-orb-3"></div>
+    <div class="sp-orb sp-orb-4"></div>
+    <div class="sp-orb sp-orb-5"></div>
+    <div class="sp-core"></div>
+  </div>
+
+  <div class="sp-text">
+    <p class="sp-label">Inizializzazione sistema</p>
+    <div class="sp-bar-wrap"><div class="sp-bar"></div></div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    import time
+    time.sleep(3.4)
+    st.rerun()
+
+
+
 # --------------------------------------------------
 # CSS DASHBOARD
 # --------------------------------------------------
