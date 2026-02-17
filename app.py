@@ -87,7 +87,7 @@ def check_password():
         width: 900px; height: 700px;
         background: radial-gradient(ellipse,
             rgba(59,130,246,0.32) 0%,
-            rigba(37,99,235,0.18) 55%,
+            rgba(37,99,235,0.18) 55%,
             rgba(15,23,42,0.5)   45%,
             transparent 70%);
         filter: saturate(1.15) brightness(1.05)
