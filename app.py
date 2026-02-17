@@ -277,13 +277,6 @@ st.markdown("""
 # --------------------------------------------------
 # FUNZIONI UTILITY
 # --------------------------------------------------
-"""
-===============================================
-PATCH: check_password() - CONERO ANALYTICS LOGIN
-Sostituisci la funzione check_password() esistente
-con questa versione premium.
-===============================================
-"""
 
 def check_password():
     """Verifica password per accesso - Login screen premium Conero Analytics"""
