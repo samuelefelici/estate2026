@@ -106,26 +106,6 @@ def check_password():
         pointer-events: none; z-index: 0;
     }
 
-    /* ---- TITOLO ---- */
-    .ca-title {
-        text-align: center;
-        color: #f0f6ff;
-        font-size: 1.6rem;
-        font-weight: 700;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        margin: 0 0 4px 0;
-        text-shadow: 0 0 20px rgba(96,165,250,0.5);
-    }
-    .ca-subtitle {
-        text-align: center;
-        color: #ef4444;
-        font-size: 0.72rem;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin: 0 0 24px 0;
-    }
-
     /* ---- INPUT OVERRIDE ---- */
     div[data-testid="stTextInput"] > div > div {
         background: rgba(5, 15, 40, 0.9) !important;
@@ -143,45 +123,44 @@ def check_password():
     }
     div[data-testid="stTextInput"] label { display: none !important; }
 
-    /* ---- BADGE SICUREZZA ---- */
-    .ca-security {
-        margin-top: 28px;
-        padding: 14px 20px;
-        background: rgba(15,23,42,0.7);
-        border: 1px solid rgba(59,130,246,0.2);
-        border-left: 3px solid #3b82f6;
-        border-radius: 10px;
-        text-align: center;
+    /* ---- LOGO HOVER ---- */
+    .ca-logo-img {
+        transition: filter 0.4s ease;
+        cursor: default;
     }
-    .ca-security-title {
-        color: #60a5fa;
-        font-size: 0.72rem;
-        font-weight: 700;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin: 0 0 6px 0;
+    .ca-logo-img:hover {
+        filter: drop-shadow(0 0 28px rgba(59,130,246,0.65))
+                drop-shadow(0 0 55px rgba(59,130,246,0.3))
+                brightness(1.1);
+    }
+
+    /* ---- BADGE SICUREZZA (footer fisso) ---- */
+    .ca-security {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        padding: 9px 20px;
+        background: rgba(2,11,24,0.88);
+        border-top: 1px solid rgba(59,130,246,0.10);
+        backdrop-filter: blur(8px);
+        z-index: 9999;
     }
     .ca-security-row {
         display: flex;
         justify-content: center;
-        gap: 18px;
+        align-items: center;
+        gap: 20px;
         flex-wrap: wrap;
     }
     .ca-security-item {
-        color: #94a3b8;
-        font-size: 0.68rem;
-        letter-spacing: 1px;
+        color: #334155;
+        font-size: 0.65rem;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 6px;
     }
-    .ca-security-dot {
-        width: 6px; height: 6px;
-        border-radius: 50%;
-        background: #22c55e;
-        display: inline-block;
-        box-shadow: 0 0 6px #22c55e;
-    }
+    .ca-sep { color: #1e293b; font-size: 0.9rem; }
     </style>
 
     <!-- Sfondo dinamico -->
@@ -211,13 +190,7 @@ def check_password():
     # Layout centrato
     _, col, _ = st.columns([1, 1, 1])
     with col:
-        st.markdown("<div style='height:12vh'></div>", unsafe_allow_html=True)
-
-        # Titolo
-        st.markdown("""
-        <p class='ca-title'>Conero Analytics</p>
-        <p class='ca-subtitle'>Dashboard · Estate 2026</p>
-        """, unsafe_allow_html=True)
+        st.markdown("<div style='height:18vh'></div>", unsafe_allow_html=True)
 
         # Input password
         def _entered():
@@ -238,33 +211,48 @@ def check_password():
         if st.session_state.get("password_correct") is False:
             st.error("❌ Password errata")
 
-        # Logo grande sotto la barra
+        # Logo grande sotto la barra (420px)
         if logo_b64:
             st.markdown(
-                f"<div style='text-align:center; margin-top:24px;'>"
-                f"<img src='data:image/png;base64,{logo_b64}' "
-                f"style='height:140px; width:auto; opacity:0.92;'/>"
+                f"<div style='text-align:center; margin-top:28px;'>"
+                f"<img class='ca-logo-img' src='data:image/png;base64,{logo_b64}' "
+                f"style='height:420px; width:auto; opacity:0.93;'/>"
                 f"</div>",
                 unsafe_allow_html=True
             )
 
-        # Badge sicurezza
-        st.markdown("""
-        <div class='ca-security'>
-            <p class='ca-security-title'>🔐 Sistema Protetto</p>
-            <div class='ca-security-row'>
-                <span class='ca-security-item'>
-                    <span class='ca-security-dot'></span> Connessione cifrata
-                </span>
-                <span class='ca-security-item'>
-                    <span class='ca-security-dot'></span> Accesso riservato
-                </span>
-                <span class='ca-security-item'>
-                    <span class='ca-security-dot'></span> Dati protetti
-                </span>
-            </div>
+    # Badge sicurezza fisso in fondo alla pagina
+    st.markdown("""
+    <div class='ca-security'>
+        <div class='ca-security-row'>
+            <span class='ca-security-item'>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                Connessione cifrata
+            </span>
+            <span class='ca-sep'>·</span>
+            <span class='ca-security-item'>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Sistema protetto
+            </span>
+            <span class='ca-sep'>·</span>
+            <span class='ca-security-item'>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 8v4l3 3"/>
+                </svg>
+                Accesso riservato · Estate 2026
+            </span>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
     return False
 
