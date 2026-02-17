@@ -32,17 +32,6 @@ def check_password():
     if st.session_state.get("password_correct"):
         return True
 
-    # Nascondi sidebar e header
-    st.markdown("""
-    <style>
-    [data-testid="stSidebar"] { display: none !important; }
-    [data-testid="stHeader"]  { display: none !important; }
-    footer { display: none !important; }
-    .block-container { padding-top: 0 !important; }
-    .stApp { background: #020b18 !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
     # Carica logo
     logo_b64 = ""
     try:
@@ -52,32 +41,182 @@ def check_password():
     except Exception:
         pass
 
+    # CSS: sfondo animato + stile login
+    st.markdown("""
+    <style>
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="stHeader"]  { display: none !important; }
+    footer { display: none !important; }
+    .block-container { padding-top: 0 !important; max-width: 100% !important; }
+
+    /* ---- SFONDO ANIMATO ---- */
+    .stApp {
+        background: #020b18 !important;
+    }
+
+    @keyframes gridPulse {
+        0%, 100% { opacity: 0.07; }
+        50%       { opacity: 0.16; }
+    }
+    @keyframes nebula {
+        0%, 100% { transform: translate(-50%, -50%) scale(1);   opacity: 0.55; }
+        50%       { transform: translate(-50%, -50%) scale(1.1); opacity: 0.80; }
+    }
+    @keyframes rise {
+        0%   { transform: translateY(0)    translateX(0);   opacity: 0; }
+        10%  { opacity: 0.8; }
+        90%  { opacity: 0.5; }
+        100% { transform: translateY(-100vh) translateX(20px); opacity: 0; }
+    }
+    @keyframes twinkle {
+        0%, 100% { opacity: 0.2; } 50% { opacity: 1; }
+    }
+
+    /* Griglia */
+    .ca-bg-grid {
+        position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        background-image:
+            linear-gradient(rgba(59,130,246,0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(59,130,246,0.06) 1px, transparent 1px);
+        background-size: 48px 48px;
+        animation: gridPulse 5s ease-in-out infinite;
+    }
+    /* Nebula */
+    .ca-bg-nebula {
+        position: fixed; top: 50%; left: 50%;
+        width: 900px; height: 700px;
+        background: radial-gradient(ellipse,
+            rgba(37,99,235,0.22) 0%,
+            rgba(15,23,42,0.5)   45%,
+            transparent 70%);
+        animation: nebula 8s ease-in-out infinite;
+        pointer-events: none; z-index: 0;
+    }
+    /* Particelle */
+    .ca-particle {
+        position: fixed; border-radius: 50%;
+        animation: rise linear infinite;
+        pointer-events: none; z-index: 0;
+    }
+    /* Stelle fisse */
+    .ca-star {
+        position: fixed; width: 2px; height: 2px;
+        background: white; border-radius: 50%;
+        animation: twinkle ease-in-out infinite;
+        pointer-events: none; z-index: 0;
+    }
+
+    /* ---- TITOLO ---- */
+    .ca-title {
+        text-align: center;
+        color: #f0f6ff;
+        font-size: 1.6rem;
+        font-weight: 700;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        margin: 0 0 4px 0;
+        text-shadow: 0 0 20px rgba(96,165,250,0.5);
+    }
+    .ca-subtitle {
+        text-align: center;
+        color: #ef4444;
+        font-size: 0.72rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin: 0 0 24px 0;
+    }
+
+    /* ---- INPUT OVERRIDE ---- */
+    div[data-testid="stTextInput"] > div > div {
+        background: rgba(5, 15, 40, 0.9) !important;
+        border: 1px solid rgba(59,130,246,0.4) !important;
+        border-radius: 10px !important;
+    }
+    div[data-testid="stTextInput"] > div > div:focus-within {
+        border-color: rgba(59,130,246,0.8) !important;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.15) !important;
+    }
+    div[data-testid="stTextInput"] input {
+        color: #e0f0ff !important;
+        font-size: 1rem !important;
+        letter-spacing: 3px !important;
+    }
+    div[data-testid="stTextInput"] label { display: none !important; }
+
+    /* ---- BADGE SICUREZZA ---- */
+    .ca-security {
+        margin-top: 28px;
+        padding: 14px 20px;
+        background: rgba(15,23,42,0.7);
+        border: 1px solid rgba(59,130,246,0.2);
+        border-left: 3px solid #3b82f6;
+        border-radius: 10px;
+        text-align: center;
+    }
+    .ca-security-title {
+        color: #60a5fa;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin: 0 0 6px 0;
+    }
+    .ca-security-row {
+        display: flex;
+        justify-content: center;
+        gap: 18px;
+        flex-wrap: wrap;
+    }
+    .ca-security-item {
+        color: #94a3b8;
+        font-size: 0.68rem;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .ca-security-dot {
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: #22c55e;
+        display: inline-block;
+        box-shadow: 0 0 6px #22c55e;
+    }
+    </style>
+
+    <!-- Sfondo dinamico -->
+    <div class="ca-bg-grid"></div>
+    <div class="ca-bg-nebula"></div>
+
+    <!-- Stelle fisse -->
+    <div class="ca-star" style="top:8%;  left:15%; animation-duration:3s; animation-delay:0s;"></div>
+    <div class="ca-star" style="top:22%; left:78%; animation-duration:4s; animation-delay:1s;"></div>
+    <div class="ca-star" style="top:55%; left:92%; animation-duration:2.5s; animation-delay:0.5s;"></div>
+    <div class="ca-star" style="top:72%; left:5%;  animation-duration:5s; animation-delay:2s;"></div>
+    <div class="ca-star" style="top:88%; left:45%; animation-duration:3.5s; animation-delay:1.5s;"></div>
+    <div class="ca-star" style="top:35%; left:32%; animation-duration:4.5s; animation-delay:0.8s;"></div>
+    <div class="ca-star" style="top:15%; left:62%; animation-duration:2.8s; animation-delay:2.5s;"></div>
+    <div class="ca-star" style="top:65%; left:55%; animation-duration:3.2s; animation-delay:0.3s;"></div>
+
+    <!-- Particelle ascendenti -->
+    <div class="ca-particle" style="width:3px;height:3px;background:#3b82f6;left:10%;bottom:0;animation-duration:9s; animation-delay:0s;"></div>
+    <div class="ca-particle" style="width:2px;height:2px;background:#60a5fa;left:25%;bottom:0;animation-duration:12s;animation-delay:2s;"></div>
+    <div class="ca-particle" style="width:4px;height:4px;background:#ef4444;left:40%;bottom:0;animation-duration:8s; animation-delay:1s;"></div>
+    <div class="ca-particle" style="width:2px;height:2px;background:#22c55e;left:55%;bottom:0;animation-duration:11s;animation-delay:3s;"></div>
+    <div class="ca-particle" style="width:3px;height:3px;background:#3b82f6;left:70%;bottom:0;animation-duration:10s;animation-delay:0.5s;"></div>
+    <div class="ca-particle" style="width:2px;height:2px;background:#93c5fd;left:82%;bottom:0;animation-duration:13s;animation-delay:4s;"></div>
+    <div class="ca-particle" style="width:3px;height:3px;background:#60a5fa;left:92%;bottom:0;animation-duration:9s; animation-delay:1.5s;"></div>
+    """, unsafe_allow_html=True)
+
     # Layout centrato
     _, col, _ = st.columns([1, 1, 1])
     with col:
-        st.markdown("<div style='height: 15vh'></div>", unsafe_allow_html=True)
-
-        # Logo
-        if logo_b64:
-            st.markdown(
-                f"<div style='text-align:center; margin-bottom:16px;'>"
-                f"<img src='data:image/png;base64,{logo_b64}' style='height:80px; width:auto;'/>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
+        st.markdown("<div style='height:12vh'></div>", unsafe_allow_html=True)
 
         # Titolo
         st.markdown("""
-        <div style='text-align:center; margin-bottom:24px;'>
-            <p style='color:#f0f6ff; font-size:1.5rem; font-weight:700;
-                      letter-spacing:3px; text-transform:uppercase; margin:0;'>
-                Conero Analytics
-            </p>
-            <p style='color:#ef4444; font-size:0.75rem; letter-spacing:2px;
-                      text-transform:uppercase; margin:4px 0 0 0;'>
-                Accesso Sicuro · Estate 2026
-            </p>
-        </div>
+        <p class='ca-title'>Conero Analytics</p>
+        <p class='ca-subtitle'>Dashboard · Estate 2026</p>
         """, unsafe_allow_html=True)
 
         # Input password
@@ -92,12 +231,40 @@ def check_password():
             type="password",
             on_change=_entered,
             key="_pwd",
-            placeholder="Inserisci password",
+            placeholder="🔒  Inserisci password",
             label_visibility="collapsed"
         )
 
         if st.session_state.get("password_correct") is False:
             st.error("❌ Password errata")
+
+        # Logo grande sotto la barra
+        if logo_b64:
+            st.markdown(
+                f"<div style='text-align:center; margin-top:24px;'>"
+                f"<img src='data:image/png;base64,{logo_b64}' "
+                f"style='height:140px; width:auto; opacity:0.92;'/>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
+        # Badge sicurezza
+        st.markdown("""
+        <div class='ca-security'>
+            <p class='ca-security-title'>🔐 Sistema Protetto</p>
+            <div class='ca-security-row'>
+                <span class='ca-security-item'>
+                    <span class='ca-security-dot'></span> Connessione cifrata
+                </span>
+                <span class='ca-security-item'>
+                    <span class='ca-security-dot'></span> Accesso riservato
+                </span>
+                <span class='ca-security-item'>
+                    <span class='ca-security-dot'></span> Dati protetti
+                </span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     return False
 
