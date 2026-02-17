@@ -211,19 +211,22 @@ def check_password():
         align-items: center;
         margin-bottom: 30px;
         position: relative;
-        height: 130px;
+        height: 150px;
     }
     .logo-svg {
-        width: 108px; height: 108px;
+        width: 200px; height: 120px;
         animation: float 5.5s ease-in-out infinite,
                    logoGlow 3.2s ease-in-out infinite;
         position: relative;
         z-index: 3;
+        mix-blend-mode: screen;
+        border-radius: 0;
+        background: transparent;
     }
     .ripple-ring {
         position: absolute;
         top: 50%; left: 50%;
-        width: 108px; height: 108px;
+        width: 130px; height: 130px;
         border-radius: 50%;
         border: 2px solid rgba(59,130,246,0.35);
         animation: ripple 2.6s ease-out infinite;
@@ -342,8 +345,19 @@ def check_password():
     </style>
     """, unsafe_allow_html=True)
 
+    # Carica logo reale dalla repo (stesso path del file .py)
+    import base64, os
+    _logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logoanalytic.png")
+    try:
+        with open(_logo_path, "rb") as _f:
+            _logo_b64 = base64.b64encode(_f.read()).decode()
+        _logo_src = f"data:image/png;base64,{_logo_b64}"
+    except Exception:
+        # fallback: usa path relativo diretto (Streamlit serve i file statici dalla root)
+        _logo_src = "logoanalytic.png"
+
     # HTML: sfondo con particelle + card
-    st.markdown("""
+    st.markdown(f"""
     <div class="login-page">
         <!-- Particelle floating -->
         <div class="particle" style="width:3px;height:3px;background:#3b82f6;left:15%;bottom:10%;animation-duration:7s;animation-delay:0s;"></div>
@@ -363,22 +377,17 @@ def check_password():
         <div class="corner c-bl"></div>
         <div class="corner c-br"></div>
 
-        <!-- Logo -->
+        <!-- Logo reale con animazioni -->
         <div class="logo-wrap">
           <div class="ripple-ring"></div>
           <div class="ripple-ring"></div>
           <div class="ripple-ring"></div>
-          <svg class="logo-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-            <line x1="10" y1="100" x2="65" y2="100"
-                  stroke="#444" stroke-width="5" stroke-linecap="round"/>
-            <circle cx="30" cy="100" r="12" fill="#ef4444"/>
-            <circle cx="120" cy="100" r="68" fill="#111"/>
-            <path d="M52,100 A68,68 0 0,1 188,100 Z" fill="#38bdf8"/>
-            <path d="M188,100 A68,68 0 0,1 52,100 Z" fill="#4ade80"/>
-            <line x1="52" y1="100" x2="188" y2="100"
-                  stroke="#0a0a0a" stroke-width="6"/>
-            <circle cx="120" cy="100" r="20" fill="#0d0d0d"/>
-          </svg>
+          <img
+            class="logo-svg"
+            src="{_logo_src}"
+            alt="Conero Analytics"
+            style="object-fit:contain; border-radius:12px;"
+          />
         </div>
 
         <div class="login-brand">Conero Analytics</div>
