@@ -86,11 +86,9 @@ def check_password():
         position: fixed; top: 50%; left: 50%;
         width: 900px; height: 700px;
         background: radial-gradient(ellipse,
-            rgba(59,130,246,0.32) 0%,
-            rgba(37,99,235,0.18) 55%,
+            rgba(37,99,235,0.22) 0%,
             rgba(15,23,42,0.5)   45%,
             transparent 70%);
-        filter: saturate(1.15) brightness(1.05);
         animation: nebula 8s ease-in-out infinite;
         pointer-events: none; z-index: 0;
     }
@@ -153,35 +151,16 @@ def check_password():
         gap: 20px;
         flex-wrap: wrap;
     }
-.ca-security-item {
-    color: rgba(226, 232, 240, 0.92);         
-    font-size: 0.72rem;                        
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    text-shadow: 0 0 10px rgba(59,130,246,0.25);
-}
-
-.ca-security-item svg {
-    color: rgba(147,197,253,0.95);         
-    filter: drop-shadow(0 0 10px rgba(59,130,246,0.25));
-}
-
-.ca-sep {
-    color: rgba(147,197,253,0.55);
-    font-size: 1rem;
-    text-shadow: 0 0 10px rgba(59,130,246,0.15);
-}
-
-/* anche il contenitore un pelo più “staccato” */
-.ca-security{
-    background: rgba(2,11,24,0.92);
-    border-top: 1px solid rgba(59,130,246,0.22);
-    box-shadow: 0 -12px 30px rgba(0,0,0,0.45);
-}
-
+    .ca-security-item {
+        color: #334155;
+        font-size: 0.65rem;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .ca-sep { color: #1e293b; font-size: 0.9rem; }
     </style>
 
     <!-- Sfondo dinamico -->
