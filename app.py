@@ -19,7 +19,7 @@ import base64, os
 # CONFIGURAZIONE PAGINA
 # --------------------------------------------------
 st.set_page_config(
-    page_title="Estate 2026 - Analytics Premium", 
+    page_title="Estate 2026 - Analytics Premium",
     layout="wide",
     initial_sidebar_state="expanded",
     page_icon="🚍"
@@ -139,9 +139,10 @@ def check_password():
         position: fixed;
         bottom: 0; left: 0; right: 0;
         padding: 9px 20px;
-        background: rgba(2,11,24,0.88);
-        border-top: 1px solid rgba(59,130,246,0.10);
+        background: rgba(2,11,24,0.92);
+        border-top: 1px solid rgba(59,130,246,0.22);
         backdrop-filter: blur(8px);
+        box-shadow: 0 -12px 30px rgba(0,0,0,0.45);
         z-index: 9999;
     }
     .ca-security-row {
@@ -151,16 +152,28 @@ def check_password():
         gap: 20px;
         flex-wrap: wrap;
     }
+
+    /* ✅ MODIFICA #1: testo badge più leggibile + glow */
     .ca-security-item {
-        color: #334155;
-        font-size: 0.65rem;
-        letter-spacing: 1.5px;
+        color: rgba(226, 232, 240, 0.92);
+        font-size: 0.72rem;
+        letter-spacing: 2px;
         text-transform: uppercase;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
+        text-shadow: 0 0 10px rgba(59,130,246,0.25);
     }
-    .ca-sep { color: #1e293b; font-size: 0.9rem; }
+    .ca-security-item svg {
+        color: rgba(147,197,253,0.95);
+        filter: drop-shadow(0 0 10px rgba(59,130,246,0.25));
+    }
+    .ca-sep {
+        color: rgba(147,197,253,0.55);
+        font-size: 1rem;
+        text-shadow: 0 0 10px rgba(59,130,246,0.15);
+    }
+
     </style>
 
     <!-- Sfondo dinamico -->
@@ -259,7 +272,6 @@ def check_password():
 
 if not check_password():
     st.stop()
-
 
 
 # --------------------------------------------------
@@ -437,7 +449,6 @@ footer{display:none!important}
     import time
     time.sleep(3.4)
     st.rerun()
-
 
 
 # --------------------------------------------------
@@ -630,7 +641,7 @@ except Exception as e:
 @st.cache_data(ttl=600)
 def load_data():
     query = """
-        SELECT 
+        SELECT
             giorno, tipo_giorno, deposito, totale_autisti,
             assenze_programmate, assenze_previste, infortuni, malattie,
             legge_104, altre_assenze, congedo_parentale, permessi_vari,
@@ -675,10 +686,13 @@ def applica_ferie_10gg(df_in: pd.DataFrame) -> pd.DataFrame:
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Mancano colonne per ricalcolo ferie: {missing}")
+
     df["deposito_norm"] = df["deposito"].astype(str).str.strip().str.lower()
     df["ferie_extra"] = 0.0
+
     mask_ancona = df["deposito_norm"] == "ancona"
     df.loc[mask_ancona, "ferie_extra"] += 5.0
+
     mask_eligible = (~df["deposito_norm"].isin(["ancona", "moie"]))
     eligible = df[mask_eligible].copy()
     if not eligible.empty:
@@ -686,6 +700,7 @@ def applica_ferie_10gg(df_in: pd.DataFrame) -> pd.DataFrame:
         sum_pesi = eligible.groupby("giorno")["peso"].transform("sum")
         eligible["quota_ferie"] = np.where(sum_pesi > 0, 5.0 * eligible["peso"] / sum_pesi, 0.0)
         df.loc[eligible.index, "ferie_extra"] += eligible["quota_ferie"].values
+
     df["assenze_previste_adj"] = df["assenze_previste"] + df["ferie_extra"]
     df["disponibili_netti_adj"] = (df["disponibili_netti"] - df["ferie_extra"]).clip(lower=0)
     df["gap_adj"] = df["gap"] - df["ferie_extra"]
@@ -710,8 +725,8 @@ st.sidebar.markdown("---")
 
 depositi = sorted(df["deposito"].unique())
 deposito_sel = st.sidebar.multiselect(
-    "📍 DEPOSITI", 
-    depositi, 
+    "📍 DEPOSITI",
+    depositi,
     default=depositi,
     help="Seleziona depositi"
 )
@@ -742,11 +757,12 @@ ferie_10 = st.sidebar.checkbox(
     help="Simula +10 assenze/giorno: 5 su Ancona e 5 distribuite sugli altri depositi (moie escluso) proporzionalmente agli autisti."
 )
 
+# ✅ MODIFICA #2: questi controlli DEVONO stare in sidebar (prima erano nel main)
 with st.sidebar.expander("🔧 Filtri Avanzati"):
-    show_forecast = st.checkbox("📈 Mostra Previsioni", value=True)
-    show_insights = st.checkbox("💡 Mostra Insights AI", value=True)
-    min_gap_filter = st.number_input("Gap Minimo", value=-100)
-    max_gap_filter = st.number_input("Gap Massimo", value=100)
+    show_forecast = st.sidebar.checkbox("📈 Mostra Previsioni", value=True)
+    show_insights = st.sidebar.checkbox("💡 Mostra Insights AI", value=True)
+    min_gap_filter = st.sidebar.number_input("Gap Minimo", value=-100)
+    max_gap_filter = st.sidebar.number_input("Gap Massimo", value=100)
 
 st.sidebar.markdown("---")
 
@@ -833,9 +849,9 @@ st.markdown("---")
 # --------------------------------------------------
 if show_insights and len(df_filtered) > 0:
     st.markdown("### <i class='fas fa-brain'></i> AI INSIGHTS", unsafe_allow_html=True)
-    
+
     insights_col1, insights_col2, insights_col3 = st.columns(3)
-    
+
     with insights_col1:
         by_dep = df_filtered.groupby("deposito")["gap"].mean()
         if len(by_dep) > 0:
@@ -852,7 +868,7 @@ if show_insights and len(df_filtered) > 0:
                 </p>
             </div>
             """, unsafe_allow_html=True)
-    
+
     with insights_col2:
         by_cat = df_filtered.groupby("categoria_giorno")["gap"].mean()
         if len(by_cat) > 0:
@@ -869,7 +885,7 @@ if show_insights and len(df_filtered) > 0:
                 </p>
             </div>
             """, unsafe_allow_html=True)
-    
+
     with insights_col3:
         assenze_trend = df_filtered.groupby("giorno")["assenze_previste"].sum()
         if len(assenze_trend) > 1:
@@ -889,7 +905,7 @@ if show_insights and len(df_filtered) > 0:
             </p>
         </div>
         """, unsafe_allow_html=True)
-    
+
     st.markdown("---")
 
 # --------------------------------------------------
@@ -921,7 +937,7 @@ else:
 # --------------------------------------------------
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Overview",
-    "📈 Trend Analysis",  
+    "📈 Trend Analysis",
     "🎯 Depositi",
     "🔍 Deep Dive",
     "📥 Export"
@@ -939,7 +955,7 @@ plotly_template = {
 with tab1:
     if len(df_filtered) > 0:
         col_main, col_side = st.columns([2, 1])
-        
+
         with col_main:
             st.markdown("#### <i class='fas fa-chart-area'></i> Andamento Temporale", unsafe_allow_html=True)
             grouped = df_filtered.groupby("giorno").agg({
@@ -948,7 +964,7 @@ with tab1:
                 "gap": "sum",
                 "assenze_previste": "sum"
             }).reset_index()
-            
+
             fig_timeline = make_subplots(
                 rows=2, cols=1,
                 row_heights=[0.65, 0.35],
@@ -956,37 +972,45 @@ with tab1:
                 vertical_spacing=0.1
             )
             fig_timeline.add_trace(
-                go.Scatter(x=grouped["giorno"], y=grouped["turni_richiesti"],
+                go.Scatter(
+                    x=grouped["giorno"], y=grouped["turni_richiesti"],
                     mode='lines+markers', name='Turni Richiesti',
                     line=dict(color='#ef4444', width=3, shape='spline'),
                     marker=dict(size=8, symbol='circle'),
-                    fill='tozeroy', fillcolor='rgba(239, 68, 68, 0.15)'),
+                    fill='tozeroy', fillcolor='rgba(239, 68, 68, 0.15)'
+                ),
                 row=1, col=1
             )
             fig_timeline.add_trace(
-                go.Scatter(x=grouped["giorno"], y=grouped["disponibili_netti"],
+                go.Scatter(
+                    x=grouped["giorno"], y=grouped["disponibili_netti"],
                     mode='lines+markers', name='Disponibili',
                     line=dict(color='#22c55e', width=3, shape='spline'),
                     marker=dict(size=8, symbol='circle'),
-                    fill='tozeroy', fillcolor='rgba(34, 197, 94, 0.15)'),
+                    fill='tozeroy', fillcolor='rgba(34, 197, 94, 0.15)'
+                ),
                 row=1, col=1
             )
             colors = ['#dc2626' if g < soglia_gap else '#fb923c' if g < 0 else '#22c55e' for g in grouped["gap"]]
             fig_timeline.add_trace(
-                go.Bar(x=grouped["giorno"], y=grouped["gap"], name="Gap",
+                go.Bar(
+                    x=grouped["giorno"], y=grouped["gap"], name="Gap",
                     marker=dict(color=colors, line=dict(width=1, color='rgba(255,255,255,0.2)')),
-                    showlegend=False),
+                    showlegend=False
+                ),
                 row=2, col=1
             )
-            fig_timeline.add_hline(y=soglia_gap, line_dash="dash", line_color="#dc2626",
-                line_width=2, annotation_text="Soglia", row=2, col=1)
+            fig_timeline.add_hline(
+                y=soglia_gap, line_dash="dash", line_color="#dc2626",
+                line_width=2, annotation_text="Soglia", row=2, col=1
+            )
             fig_timeline.update_layout(
                 height=600, hovermode="x unified", showlegend=True,
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 **plotly_template
             )
             st.plotly_chart(fig_timeline, use_container_width=True)
-        
+
         with col_side:
             st.markdown("#### <i class='fas fa-tachometer-alt'></i> Stato Copertura", unsafe_allow_html=True)
             fig_gauge = go.Figure(go.Indicator(
@@ -1009,12 +1033,12 @@ with tab1:
                         {'range': [10, 20], 'color': 'rgba(16, 185, 129, 0.3)'}
                     ],
                     'threshold': {'line': {'color': "#ef4444", 'width': 4}, 'thickness': 0.75,
-                        'value': (soglia_gap / media_turni_giorno * 100) if media_turni_giorno > 0 else 0}
+                                  'value': (soglia_gap / media_turni_giorno * 100) if media_turni_giorno > 0 else 0}
                 }
             ))
             fig_gauge.update_layout(height=280, paper_bgcolor='rgba(15, 23, 42, 0.5)', margin=dict(l=20, r=20, t=40, b=20))
             st.plotly_chart(fig_gauge, use_container_width=True)
-            
+
             st.markdown("#### <i class='fas fa-user-injured'></i> Assenze", unsafe_allow_html=True)
             assenze_breakdown = pd.DataFrame({
                 'Tipo': ['Infortuni', 'Malattie', 'L.104', 'Congedi', 'Permessi', 'Altro'],
@@ -1041,7 +1065,7 @@ with tab1:
                     margin=dict(l=0, r=0, t=0, b=0)
                 )
                 st.plotly_chart(fig_assenze, use_container_width=True)
-        
+
         st.markdown("---")
         st.markdown("#### <i class='fas fa-fire'></i> Heatmap Criticità", unsafe_allow_html=True)
         pivot_gap = df_filtered.pivot_table(
@@ -1070,6 +1094,7 @@ with tab2:
             'infortuni': 'sum', 'malattie': 'sum', 'legge_104': 'sum',
             'congedo_parentale': 'sum', 'permessi_vari': 'sum'
         }).reset_index()
+
         fig_trend = go.Figure()
         for col, name, color in zip(
             ['infortuni', 'malattie', 'legge_104', 'congedo_parentale', 'permessi_vari'],
@@ -1082,7 +1107,7 @@ with tab2:
                 line=dict(color=color, width=2), marker=dict(size=6)
             ))
         fig_trend.update_layout(height=450, hovermode="x unified",
-            legend=dict(orientation="h", y=-0.15), **plotly_template)
+                                legend=dict(orientation="h", y=-0.15), **plotly_template)
         st.plotly_chart(fig_trend, use_container_width=True)
 
         st.markdown("---")
@@ -1101,6 +1126,7 @@ with tab2:
         assenze_medie = df_filtered.groupby('giorno')['assenze_previste'].sum().mean()
         turni_medi = df_filtered.groupby('giorno')['turni_richiesti'].sum().mean()
         gap_medio = df_filtered.groupby('giorno')['gap'].sum().mean()
+
         fig_waterfall = go.Figure(go.Waterfall(
             name="Gap", orientation="v",
             measure=["absolute", "relative", "relative", "total"],
@@ -1123,9 +1149,9 @@ with tab3:
         st.markdown("#### <i class='fas fa-trophy'></i> Ranking Depositi", unsafe_allow_html=True)
         soglia_per_deposito = (soglia_gap / giorni_analizzati) if giorni_analizzati > 0 else -999
         colors_dep = [
-            '#dc2626' if g < soglia_per_deposito 
-            else '#fb923c' if g < 0 
-            else '#22c55e' 
+            '#dc2626' if g < soglia_per_deposito
+            else '#fb923c' if g < 0
+            else '#22c55e'
             for g in by_deposito["media_gap_giorno"]
         ]
         fig_dep = go.Figure(go.Bar(
@@ -1147,6 +1173,7 @@ with tab3:
                 by_deposito_norm[f'{col}_norm'] = by_deposito_norm[col] / max_val * 100
             else:
                 by_deposito_norm[f'{col}_norm'] = 0
+
         fig_radar = go.Figure()
         for _, row in by_deposito.head(5).iterrows():
             dep_norm = by_deposito_norm[by_deposito_norm['deposito'] == row['deposito']]
@@ -1209,7 +1236,7 @@ with tab4:
 
         st.markdown("---")
         st.markdown("##### 🔗 Matrice Correlazioni", unsafe_allow_html=True)
-        corr_cols = ['turni_richiesti', 'disponibili_netti', 'gap', 'assenze_previste', 
+        corr_cols = ['turni_richiesti', 'disponibili_netti', 'gap', 'assenze_previste',
                      'infortuni', 'malattie', 'legge_104']
         corr_matrix = df_filtered[corr_cols].corr()
         fig_corr = go.Figure(go.Heatmap(
