@@ -90,7 +90,7 @@ def check_password():
             rgba(37,99,235,0.18) 55%,
             rgba(15,23,42,0.5)   45%,
             transparent 70%);
-        filter: saturate(1.15) brightness(1.05)
+        filter: saturate(1.15) brightness(1.05);
         animation: nebula 8s ease-in-out infinite;
         pointer-events: none; z-index: 0;
     }
