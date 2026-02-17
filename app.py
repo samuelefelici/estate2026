@@ -277,26 +277,395 @@ st.markdown("""
 # --------------------------------------------------
 # FUNZIONI UTILITY
 # --------------------------------------------------
+"""
+===============================================
+PATCH: check_password() - CONERO ANALYTICS LOGIN
+Sostituisci la funzione check_password() esistente
+con questa versione premium.
+===============================================
+"""
+
 def check_password():
-    """Verifica password per accesso"""
-    def password_entered():
-        if st.session_state["password"] == st.secrets["APP_PASSWORD"]:
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]
-        else:
-            st.session_state["password_correct"] = False
+    """Verifica password per accesso - Login screen premium Conero Analytics"""
 
-    if "password_correct" not in st.session_state:
-        st.text_input("🔒 Password", type="password", on_change=password_entered, key="password")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.text_input("🔒 Password", type="password", on_change=password_entered, key="password")
-        st.error("❌ Password errata")
-        return False
+    # ---- CSS LOGIN SCREEN ----
+    st.markdown("""
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+    /* Nascondi sidebar e header durante il login */
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="stHeader"]  { display: none !important; }
+    footer { display: none !important; }
+
+    /* Full-page dark bg con griglia animata */
+    .stApp {
+        background: #020b18 !important;
+        font-family: 'Exo 2', sans-serif;
+    }
+
+    /* Particelle / griglia di sfondo */
+    @keyframes gridPulse {
+        0%, 100% { opacity: 0.12; }
+        50%       { opacity: 0.22; }
+    }
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        33%       { transform: translateY(-18px) rotate(1deg); }
+        66%       { transform: translateY(8px) rotate(-1deg); }
+    }
+    @keyframes logoGlow {
+        0%, 100% { filter: drop-shadow(0 0 12px rgba(59,130,246,0.6))
+                           drop-shadow(0 0 30px rgba(59,130,246,0.3)); }
+        50%       { filter: drop-shadow(0 0 22px rgba(59,130,246,0.9))
+                           drop-shadow(0 0 55px rgba(59,130,246,0.5))
+                           drop-shadow(0 0 80px rgba(37,99,235,0.3)); }
+    }
+    @keyframes ripple {
+        0%   { transform: scale(0.95); opacity: 0.7; }
+        70%  { transform: scale(1.3);  opacity: 0; }
+        100% { transform: scale(0.95); opacity: 0; }
+    }
+    @keyframes scanline {
+        0%   { top: -4px; }
+        100% { top: 100%; }
+    }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes blinkCursor {
+        0%, 100% { border-right-color: transparent; }
+        50%       { border-right-color: #3b82f6; }
+    }
+    @keyframes orbitDot {
+        from { transform: rotate(0deg) translateX(62px) rotate(0deg); }
+        to   { transform: rotate(360deg) translateX(62px) rotate(-360deg); }
+    }
+    @keyframes dash {
+        to { stroke-dashoffset: 0; }
+    }
+
+    /* Wrapper centrale */
+    .login-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Sfondo animato: griglia futuristica */
+    .login-wrapper::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image:
+            linear-gradient(rgba(59,130,246,0.07) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(59,130,246,0.07) 1px, transparent 1px);
+        background-size: 44px 44px;
+        animation: gridPulse 4s ease-in-out infinite;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* Sfondo radiale "nebula" */
+    .login-wrapper::after {
+        content: '';
+        position: fixed;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 900px; height: 900px;
+        background: radial-gradient(ellipse at center,
+            rgba(37,99,235,0.18) 0%,
+            rgba(15,23,42,0.6)  45%,
+            transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* Card glassmorphism */
+    .login-card {
+        position: relative;
+        z-index: 10;
+        background: rgba(10, 20, 45, 0.75);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(59,130,246,0.25);
+        border-radius: 24px;
+        padding: 52px 44px 44px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow:
+            0 0 0 1px rgba(59,130,246,0.1),
+            0 24px 80px rgba(0,0,0,0.7),
+            inset 0 1px 0 rgba(255,255,255,0.06);
+        animation: fadeInUp 0.8s ease both;
+        overflow: hidden;
+    }
+
+    /* Scan-line su card */
+    .login-card::before {
+        content: '';
+        position: absolute;
+        left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, rgba(59,130,246,0.6), transparent);
+        animation: scanline 3.5s linear infinite;
+        pointer-events: none;
+        z-index: 5;
+    }
+
+    /* Logo container */
+    .logo-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 28px;
+        position: relative;
+    }
+
+    /* SVG logo con animazione float + glow */
+    .logo-svg {
+        width: 110px; height: 110px;
+        animation: float 5s ease-in-out infinite, logoGlow 3s ease-in-out infinite;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* Cerchi ripple attorno al logo */
+    .ripple-ring {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 110px; height: 110px;
+        border: 2px solid rgba(59,130,246,0.4);
+        border-radius: 50%;
+        animation: ripple 2.4s ease-out infinite;
+        z-index: 1;
+    }
+    .ripple-ring:nth-child(2) { animation-delay: 0.8s; }
+    .ripple-ring:nth-child(3) { animation-delay: 1.6s; }
+
+    /* Titolo */
+    .login-title {
+        text-align: center;
+        margin-bottom: 4px;
+        font-family: 'Exo 2', sans-serif;
+        font-weight: 700;
+        font-size: 1.75rem;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #f0f6ff;
+        text-shadow: 0 0 20px rgba(59,130,246,0.5);
+        animation: fadeInUp 0.8s 0.2s ease both;
+    }
+    .login-subtitle {
+        text-align: center;
+        margin-bottom: 36px;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.78rem;
+        letter-spacing: 2px;
+        color: #ef4444;
+        text-transform: uppercase;
+        animation: fadeInUp 0.8s 0.35s ease both;
+    }
+
+    /* Label sopra l'input */
+    .input-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 2px;
+        color: #60a5fa;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        animation: fadeInUp 0.8s 0.5s ease both;
+    }
+    .input-label::before {
+        content: '▶';
+        font-size: 0.6rem;
+        color: #ef4444;
+    }
+
+    /* Override Streamlit input */
+    div[data-testid="stTextInput"] {
+        animation: fadeInUp 0.8s 0.6s ease both;
+    }
+    div[data-testid="stTextInput"] > div > div {
+        background: rgba(5, 15, 35, 0.9) !important;
+        border: 1px solid rgba(59,130,246,0.35) !important;
+        border-radius: 10px !important;
+        color: #e0f0ff !important;
+        font-family: 'Share Tech Mono', monospace !important;
+        font-size: 1.05rem !important;
+        letter-spacing: 3px !important;
+        padding: 14px 18px !important;
+        transition: border-color 0.3s, box-shadow 0.3s !important;
+        max-width: 100% !important;
+    }
+    div[data-testid="stTextInput"] > div > div:focus-within {
+        border-color: rgba(59,130,246,0.7) !important;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.15),
+                    0 0 20px rgba(59,130,246,0.2) !important;
+    }
+    div[data-testid="stTextInput"] input {
+        background: transparent !important;
+        color: #e0f0ff !important;
+        font-family: 'Share Tech Mono', monospace !important;
+        font-size: 1.05rem !important;
+        letter-spacing: 3px !important;
+    }
+    div[data-testid="stTextInput"] input::placeholder {
+        color: rgba(96,165,250,0.35) !important;
+        letter-spacing: 2px;
+    }
+
+    /* Hint / error */
+    .login-hint {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.7rem;
+        color: rgba(96,165,250,0.5);
+        text-align: center;
+        margin-top: 16px;
+        letter-spacing: 1px;
+        animation: fadeInUp 0.8s 0.7s ease both;
+    }
+    .login-error {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.78rem;
+        color: #ef4444;
+        text-align: center;
+        margin-top: 12px;
+        padding: 10px;
+        background: rgba(239,68,68,0.1);
+        border: 1px solid rgba(239,68,68,0.3);
+        border-radius: 8px;
+        letter-spacing: 1px;
+        animation: fadeInUp 0.4s ease both;
+    }
+
+    /* Nascondi label default Streamlit sull'input */
+    div[data-testid="stTextInput"] label { display: none !important; }
+
+    /* Decorazioni angoli card */
+    .corner { position: absolute; width: 18px; height: 18px; z-index: 20; }
+    .corner-tl { top: 12px; left: 12px; border-top: 2px solid #3b82f6; border-left: 2px solid #3b82f6; }
+    .corner-tr { top: 12px; right: 12px; border-top: 2px solid #3b82f6; border-right: 2px solid #3b82f6; }
+    .corner-bl { bottom: 12px; left: 12px; border-bottom: 2px solid #3b82f6; border-left: 2px solid #3b82f6; }
+    .corner-br { bottom: 12px; right: 12px; border-bottom: 2px solid #3b82f6; border-right: 2px solid #3b82f6; }
+
+    /* Footer piccolo */
+    .login-footer {
+        position: fixed;
+        bottom: 24px;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.65rem;
+        color: rgba(96,165,250,0.3);
+        letter-spacing: 2px;
+        text-align: center;
+        z-index: 10;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ---- HTML LOGIN CARD ----
+    st.markdown("""
+    <div class="login-wrapper">
+      <div class="login-card">
+        <!-- Decorazioni angoli -->
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-tr"></div>
+        <div class="corner corner-bl"></div>
+        <div class="corner corner-br"></div>
+
+        <!-- Logo con animazioni ripple -->
+        <div class="logo-container">
+          <div class="ripple-ring"></div>
+          <div class="ripple-ring"></div>
+          <div class="ripple-ring"></div>
+          <!-- SVG Logo Conero Analytics (inline replica) -->
+          <svg class="logo-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <!-- Linea con punto rosso (sinistra) -->
+            <line x1="10" y1="100" x2="68" y2="100"
+                  stroke="#555" stroke-width="5" stroke-linecap="round"/>
+            <circle cx="30" cy="100" r="12" fill="#ef4444"/>
+
+            <!-- Cerchio esterno (bordo scuro) -->
+            <circle cx="120" cy="100" r="68" fill="#1a1a1a"/>
+
+            <!-- Metà superiore blu -->
+            <path d="M52,100 A68,68 0 0,1 188,100 Z" fill="#38bdf8"/>
+
+            <!-- Metà inferiore verde -->
+            <path d="M188,100 A68,68 0 0,1 52,100 Z" fill="#4ade80"/>
+
+            <!-- Linea orizzontale divisoria -->
+            <line x1="52" y1="100" x2="188" y2="100"
+                  stroke="#111" stroke-width="6"/>
+
+            <!-- Cerchio centrale nero -->
+            <circle cx="120" cy="100" r="22" fill="#111"/>
+          </svg>
+        </div>
+
+        <!-- Titolo -->
+        <div class="login-title">Conero Analytics</div>
+        <div class="login-subtitle">Accesso Sicuro • Estate 2026</div>
+
+        <!-- Label input -->
+        <div class="input-label">Inserisci Credenziali di Accesso</div>
+      </div>
+    </div>
+
+    <div class="login-footer">CONERO ANALYTICS © 2026 &nbsp;|&nbsp; SISTEMA PROTETTO</div>
+    """, unsafe_allow_html=True)
+
+    # ---- INPUT PASSWORD (Streamlit nativo, dentro la card via CSS) ----
+    # Centra l'input con colonne
+    col_l, col_c, col_r = st.columns([1, 2, 1])
+    with col_c:
+        def password_entered():
+            if st.session_state["password"] == st.secrets["APP_PASSWORD"]:
+                st.session_state["password_correct"] = True
+                del st.session_state["password"]
+            else:
+                st.session_state["password_correct"] = False
+
+        if "password_correct" not in st.session_state:
+            st.text_input(
+                "Password",
+                type="password",
+                on_change=password_entered,
+                key="password",
+                placeholder="••••••••••••",
+                label_visibility="hidden"
+            )
+            st.markdown(
+                "<div class='login-hint'>Premi Invio per accedere</div>",
+                unsafe_allow_html=True
+            )
+            return False
+
+        elif not st.session_state["password_correct"]:
+            st.text_input(
+                "Password",
+                type="password",
+                on_change=password_entered,
+                key="password",
+                placeholder="••••••••••••",
+                label_visibility="hidden"
+            )
+            st.markdown(
+                "<div class='login-error'>⚠ Credenziali non valide — Riprova</div>",
+                unsafe_allow_html=True
+            )
+            return False
+
     return True
-
-if not check_password():
-    st.stop()
 
 @st.cache_resource
 def get_connection():
