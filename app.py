@@ -415,15 +415,18 @@ def load_depositi_stats() -> pd.DataFrame:
 @st.cache_data(ttl=600)
 def load_turni_calendario() -> pd.DataFrame:
     """
-    Espande turni per deposito solo nei giorni di validità corretti,
-    incrociando con la tabella calendar per il daytype.
-    valid: 'Lu-Ve' | 'Sa' | 'Do'
+    Conta i turni per deposito per ogni giorno del calendario,
+    rispettando la validità (Lu-Ve / Sa / Do) e il range dal/al.
+
+    Schema reale:
+      turni   → id, valid (Lu-Ve|Sa|Do), codice_turno, deposito, dal, al
+      calendar → data (date), daytype (testo uguale a valid)
     """
     query = """
         SELECT
-            c.data              AS giorno,
+            c.data          AS giorno,
             t.deposito,
-            COUNT(t.id)         AS turni
+            COUNT(t.id)     AS turni
         FROM turni t
         JOIN calendar c
           ON c.data BETWEEN t.dal AND t.al
@@ -433,11 +436,12 @@ def load_turni_calendario() -> pd.DataFrame:
     """
     return pd.read_sql(query, conn)
 
+
 # --- caricamento iniziale ---
 try:
-    df_raw       = load_staffing()
+    df_raw      = load_staffing()
     df_raw["giorno"] = pd.to_datetime(df_raw["giorno"])
-    df_depositi  = load_depositi_stats()
+    df_depositi = load_depositi_stats()
 
     # escludi deposito tecnico
     df_raw      = df_raw[df_raw["deposito"] != "depbelvede"].copy()
@@ -449,9 +453,12 @@ except Exception as e:
 try:
     df_turni_cal = load_turni_calendario()
     df_turni_cal["giorno"] = pd.to_datetime(df_turni_cal["giorno"])
-    turni_cal_ok = True
+    turni_cal_ok = len(df_turni_cal) > 0
+    if not turni_cal_ok:
+        st.sidebar.warning("⚠️ Turni: query OK ma 0 righe restituite")
 except Exception as e:
-    st.warning(f"⚠️ Turni calendario non disponibili: {e}")
+    # Mostra l'errore SQL preciso nella sidebar per debug
+    st.sidebar.error(f"❌ Errore turni: {e}")
     df_turni_cal = pd.DataFrame()
     turni_cal_ok = False
 
@@ -907,13 +914,18 @@ with tab3:
     st.markdown("### <i class='fas fa-calendar-check'></i> Turni per Deposito — Validità Temporale",
                 unsafe_allow_html=True)
     st.markdown(
-        "<p style='color:#93c5fd;'>Visualizzazione giornaliera basata sulle date di validità "
-        "(data_da / data_a) definite nella tabella turni.</p>",
+        "<p style='color:#93c5fd;'>Turni giornalieri per deposito, rispettando il tipo di giorno "
+        "(Lu-Ve / Sa / Do) e il range di validita <b>dal &rarr; al</b> della tabella turni.</p>",
         unsafe_allow_html=True
     )
 
     if not turni_cal_ok or len(df_tc_filtered) == 0:
-        st.warning("⚠️ Dati turni calendario non disponibili o nessun record nel periodo selezionato.")
+        st.warning("Nessun record trovato per il periodo selezionato.")
+        st.info(
+            "**Debug rapido**: controlla che i valori di `valid` nella tabella `turni` "
+            "(`Lu-Ve`, `Sa`, `Do`) coincidano esattamente con i valori di `daytype` "
+            "in `calendar`, e che le date `dal`/`al` rientrino nel periodo selezionato."
+        )
     else:
         # ---- controlli localizzati nel tab ----
         tc_col1, tc_col2, tc_col3 = st.columns([1, 1, 2])
