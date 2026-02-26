@@ -1069,6 +1069,135 @@ with tab3:
             )
             st.plotly_chart(fig_pie_tc, use_container_width=True)
 
+            # ---- turni per tipo giorno (cumulativo per deposito) ----
+            st.markdown("---")
+            st.markdown("#### <i class='fas fa-calendar-week'></i> Turni per Tipo Giorno — Cumulativo per Deposito", unsafe_allow_html=True)
+            st.markdown(
+                "<p style='color:#93c5fd;font-size:0.9rem;'>Le barre si sommano man mano che aggiungi depositi dal filtro qui sopra.</p>",
+                unsafe_allow_html=True
+            )
+
+            # Mappa daytype → categoria (Lu-Ve / Sabato / Domenica)
+            def daytype_to_categoria(dt: str) -> str:
+                dt = (dt or "").strip().lower()
+                if dt in ["lunedi","martedi","mercoledi","giovedi","venerdi"]:
+                    return "Lu-Ve"
+                elif dt == "sabato":
+                    return "Sabato"
+                elif dt == "domenica":
+                    return "Domenica"
+                return dt.title()
+
+            # Unisce df_tc_plot con calendar per avere il daytype
+            if turni_cal_ok and len(df_tc_plot) > 0:
+                try:
+                    # Carica il calendar solo con le date presenti nei turni filtrati
+                    date_list = df_tc_plot["giorno"].dt.date.unique().tolist()
+                    date_str  = ",".join([f"'{d}'" for d in date_list])
+                    df_cal_mini = pd.read_sql(
+                        f"SELECT data, daytype FROM calendar WHERE data IN ({date_str});",
+                        get_conn()
+                    )
+                    df_cal_mini["data"] = pd.to_datetime(df_cal_mini["data"])
+
+                    df_tc_daytype = df_tc_plot.merge(
+                        df_cal_mini, left_on="giorno", right_on="data", how="left"
+                    )
+                    df_tc_daytype["categoria"] = df_tc_daytype["daytype"].apply(daytype_to_categoria)
+
+                    # Aggrega: per ogni deposito + categoria, somma i turni
+                    agg_daytype = (
+                        df_tc_daytype.groupby(["deposito", "categoria"])["turni"]
+                        .sum().reset_index()
+                    )
+
+                    # Ordine fisso categorie
+                    cat_order = ["Lu-Ve", "Sabato", "Domenica"]
+                    agg_daytype["categoria"] = pd.Categorical(
+                        agg_daytype["categoria"], categories=cat_order, ordered=True
+                    )
+                    agg_daytype = agg_daytype.sort_values(["categoria", "deposito"])
+
+                    # Totali cumulativi per categoria (tutti i depositi selezionati)
+                    totale_cat = agg_daytype.groupby("categoria")["turni"].sum().reindex(cat_order, fill_value=0)
+
+                    fig_daytype = go.Figure()
+
+                    for dep in sorted(agg_daytype["deposito"].unique()):
+                        dep_data = agg_daytype[agg_daytype["deposito"] == dep]
+                        valori   = [
+                            dep_data[dep_data["categoria"] == cat]["turni"].sum()
+                            if cat in dep_data["categoria"].values else 0
+                            for cat in cat_order
+                        ]
+                        fig_daytype.add_trace(go.Bar(
+                            x=cat_order,
+                            y=valori,
+                            name=dep.title(),
+                            marker_color=get_colore_deposito(dep),
+                            marker_line=dict(width=0.4, color="rgba(255,255,255,0.12)"),
+                            text=[f"{v:,}" if v > 0 else "" for v in valori],
+                            textposition="inside",
+                            textfont=dict(size=11, color="white"),
+                            hovertemplate=(
+                                f"<b>{dep.title()}</b><br>"
+                                "Tipo: %{x}<br>"
+                                "Turni: <b>%{y:,}</b><extra></extra>"
+                            )
+                        ))
+
+                    # Annotazioni totale sopra ogni barra
+                    fig_daytype.update_layout(
+                        barmode="stack",
+                        height=480,
+                        hovermode="x unified",
+                        plot_bgcolor="rgba(15,23,42,0.8)",
+                        paper_bgcolor="rgba(15,23,42,0.5)",
+                        font=dict(color="#cbd5e1", family="Arial, sans-serif"),
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom", y=1.02,
+                            xanchor="right", x=1,
+                            font=dict(size=11)
+                        ),
+                        xaxis=dict(
+                            title="Tipo Giorno",
+                            gridcolor="rgba(96,165,250,0.1)",
+                            linecolor="rgba(96,165,250,0.3)",
+                        ),
+                        yaxis=dict(
+                            title="Turni Totali",
+                            gridcolor="rgba(96,165,250,0.1)",
+                            linecolor="rgba(96,165,250,0.3)",
+                        ),
+                        annotations=[
+                            dict(
+                                x=cat,
+                                y=totale_cat[cat],
+                                text=f"<b>{int(totale_cat[cat]):,}</b>",
+                                xanchor="center",
+                                yanchor="bottom",
+                                showarrow=False,
+                                font=dict(size=13, color="#ffffff"),
+                                yshift=6
+                            )
+                            for cat in cat_order if totale_cat[cat] > 0
+                        ]
+                    )
+                    st.plotly_chart(fig_daytype, use_container_width=True)
+
+                    # KPI veloci sotto il grafico
+                    k1, k2, k3 = st.columns(3)
+                    with k1:
+                        st.metric("📅 Lu-Ve — Totale turni",  f"{int(totale_cat.get('Lu-Ve', 0)):,}")
+                    with k2:
+                        st.metric("📅 Sabato — Totale turni", f"{int(totale_cat.get('Sabato', 0)):,}")
+                    with k3:
+                        st.metric("📅 Domenica — Totale turni", f"{int(totale_cat.get('Domenica', 0)):,}")
+
+                except Exception as e:
+                    st.warning(f"⚠️ Impossibile caricare analisi per tipo giorno: {e}")
+
 
 # ══════════════════════════════════════════════════
 # TAB 4 — DEPOSITI
