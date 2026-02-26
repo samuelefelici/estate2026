@@ -725,12 +725,11 @@ else:
 # --------------------------------------------------
 # TABS
 # --------------------------------------------------
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Overview",
-    "📈 Trend Analysis",
+    "📈 Analisi & Assenze",
     "🚌 Turni Calendario",
     "🎯 Depositi",
-    "🔍 Deep Dive",
     "📥 Export",
 ])
 
@@ -848,76 +847,342 @@ with tab1:
 
 
 # ══════════════════════════════════════════════════
-# TAB 2 — TREND ANALYSIS
+# TAB 2 — ANALISI & ASSENZE (merged Trend + Deep Dive)
 # ══════════════════════════════════════════════════
 with tab2:
-    if len(df_filtered) > 0:
-        st.markdown("#### <i class='fas fa-chart-line'></i> Trend Assenze per Tipologia", unsafe_allow_html=True)
-        trend_df = df_filtered.groupby("giorno").agg(
-            infortuni=("infortuni","sum"), malattie=("malattie","sum"),
-            legge_104=("legge_104","sum"), congedo_parentale=("congedo_parentale","sum"),
-            permessi_vari=("permessi_vari","sum")
-        ).reset_index()
+    if len(df_filtered) == 0:
+        st.info("Nessun dato per i filtri selezionati.")
+    else:
+        # Sotto-tab interni
+        st2_a, st2_b, st2_c, st2_d = st.tabs([
+            "📉 Gap & Waterfall",
+            "🏖️ Ferie & Riposi",
+            "🤒 Assenze Complete",
+            "📦 Distribuzione Gap",
+        ])
 
-        fig_trend = go.Figure()
-        palette = [('#ef4444','Infortuni'),('#f97316','Malattie'),('#eab308','L.104'),
-                   ('#22c55e','Congedi'),('#06b6d4','Permessi')]
-        for (col, lbl), (col_name, _) in zip(
-                [('infortuni',''), ('malattie',''), ('legge_104',''),
-                 ('congedo_parentale',''), ('permessi_vari','')],
-                palette):
-            col_c, lbl_c = palette[
-                [('infortuni','Infortuni'),('malattie','Malattie'),('legge_104','L.104'),
-                 ('congedo_parentale','Congedi'),('permessi_vari','Permessi')
-                ].index((col, lbl if lbl else ''))
-                if (col, lbl if lbl else '') in
-                   [('infortuni','Infortuni'),('malattie','Malattie'),('legge_104','L.104'),
-                    ('congedo_parentale','Congedi'),('permessi_vari','Permessi')]
-                else 0
-            ]
-            fig_trend.add_trace(go.Scatter(
-                x=trend_df["giorno"], y=trend_df[col],
-                mode='lines+markers', name=lbl_c,
-                line=dict(color=col_c, width=2), marker=dict(size=6)
-            ))
-        fig_trend.update_layout(height=450, hovermode="x unified",
-                                legend=dict(orientation="h", y=-0.15), **PLOTLY_TEMPLATE)
-        st.plotly_chart(fig_trend, use_container_width=True)
+        # ─────────────────────────────────────────────
+        # SOTTO-TAB A — GAP & WATERFALL
+        # ─────────────────────────────────────────────
+        with st2_a:
+            col_wf, col_box = st.columns([1, 1])
 
-        st.markdown("---")
-        st.markdown("#### <i class='fas fa-box'></i> Distribuzione Gap per Deposito", unsafe_allow_html=True)
-        fig_box = go.Figure()
-        for dep in deposito_sel:
-            dep_data = df_filtered[df_filtered['deposito'] == dep]['gap']
-            if len(dep_data) > 0:
-                fig_box.add_trace(go.Box(
-                    y=dep_data, name=dep,
-                    marker_color=get_colore_deposito(dep), boxmean='sd'
+            with col_wf:
+                st.markdown("#### <i class='fas fa-water'></i> Composizione Gap Medio Giornaliero", unsafe_allow_html=True)
+                autisti_medio = df_filtered.groupby("giorno")["totale_autisti"].sum().mean()
+                assenze_medie = df_filtered.groupby("giorno")["assenze_previste"].sum().mean()
+                turni_medi    = df_filtered.groupby("giorno")["turni_richiesti"].sum().mean()
+                gap_medio_wf  = df_filtered.groupby("giorno")["gap"].sum().mean()
+
+                fig_wf = go.Figure(go.Waterfall(
+                    orientation="v",
+                    measure=["absolute", "relative", "relative", "total"],
+                    x=["Autisti Totali", "− Assenze", "− Turni Richiesti", "= Gap"],
+                    y=[autisti_medio, -assenze_medie, -(turni_medi - assenze_medie), gap_medio_wf],
+                    text=[f"{autisti_medio:.0f}", f"−{assenze_medie:.0f}",
+                          f"−{(turni_medi - assenze_medie):.0f}", f"{gap_medio_wf:.0f}"],
+                    textposition="outside",
+                    connector={"line": {"color": "#60a5fa"}},
+                    increasing={"marker": {"color": "#22c55e"}},
+                    decreasing={"marker": {"color": "#ef4444"}},
+                    totals={"marker": {"color": "#3b82f6"}},
                 ))
-        fig_box.update_layout(height=450, showlegend=False, **PLOTLY_TEMPLATE)
-        st.plotly_chart(fig_box, use_container_width=True)
+                fig_wf.update_layout(height=420, showlegend=False, **PLOTLY_TEMPLATE)
+                st.plotly_chart(fig_wf, use_container_width=True)
 
-        st.markdown("---")
-        st.markdown("#### <i class='fas fa-water'></i> Composizione Gap Medio Giornaliero", unsafe_allow_html=True)
-        autisti_medio   = df_filtered.groupby('giorno')['totale_autisti'].sum().mean()
-        assenze_medie   = df_filtered.groupby('giorno')['assenze_previste'].sum().mean()
-        turni_medi      = df_filtered.groupby('giorno')['turni_richiesti'].sum().mean()
-        gap_medio       = df_filtered.groupby('giorno')['gap'].sum().mean()
+            with col_box:
+                st.markdown("#### <i class='fas fa-box-open'></i> Distribuzione Gap per Deposito", unsafe_allow_html=True)
+                fig_box = go.Figure()
+                for dep in sorted(deposito_sel):
+                    dep_data = df_filtered[df_filtered["deposito"] == dep]["gap"]
+                    if len(dep_data) > 0:
+                        fig_box.add_trace(go.Box(
+                            y=dep_data, name=dep.title(),
+                            marker_color=get_colore_deposito(dep),
+                            boxmean="sd",
+                            hovertemplate=f"<b>{dep.title()}</b><br>Gap: %{{y}}<extra></extra>"
+                        ))
+                fig_box.update_layout(height=420, showlegend=False, **PLOTLY_TEMPLATE)
+                st.plotly_chart(fig_box, use_container_width=True)
 
-        fig_wf = go.Figure(go.Waterfall(
-            orientation="v", measure=["absolute","relative","relative","total"],
-            x=["Autisti Totali","- Assenze","- Turni Richiesti","= Gap"],
-            y=[autisti_medio, -assenze_medie, -turni_medi + assenze_medie, gap_medio],
-            text=[f"{autisti_medio:.0f}", f"-{assenze_medie:.0f}",
-                  f"-{(turni_medi-assenze_medie):.0f}", f"{gap_medio:.0f}"],
-            textposition="outside",
-            connector={"line": {"color": "#60a5fa"}},
-            increasing={"marker": {"color": "#22c55e"}},
-            decreasing={"marker": {"color": "#ef4444"}},
-            totals={"marker":    {"color": "#3b82f6"}}
-        ))
-        fig_wf.update_layout(height=450, showlegend=False, **PLOTLY_TEMPLATE)
-        st.plotly_chart(fig_wf, use_container_width=True)
+            st.markdown("---")
+            st.markdown("#### <i class='fas fa-chart-line'></i> Trend Assenze per Tipologia", unsafe_allow_html=True)
+            trend_df = df_filtered.groupby("giorno").agg(
+                infortuni=("infortuni", "sum"),
+                malattie=("malattie", "sum"),
+                legge_104=("legge_104", "sum"),
+                congedo_parentale=("congedo_parentale", "sum"),
+                permessi_vari=("permessi_vari", "sum"),
+            ).reset_index()
+
+            fig_trend = go.Figure()
+            for col, label, colore in [
+                ("infortuni",         "Infortuni",       "#ef4444"),
+                ("malattie",          "Malattie",        "#f97316"),
+                ("legge_104",         "L.104",           "#eab308"),
+                ("congedo_parentale", "Congedo parent.", "#06b6d4"),
+                ("permessi_vari",     "Permessi vari",   "#22c55e"),
+            ]:
+                fig_trend.add_trace(go.Scatter(
+                    x=trend_df["giorno"], y=trend_df[col],
+                    mode="lines+markers", name=label,
+                    line=dict(color=colore, width=2),
+                    marker=dict(size=5),
+                    hovertemplate=f"<b>{label}</b><br>%{{x|%d/%m/%Y}}: <b>%{{y:.1f}}</b><extra></extra>"
+                ))
+            fig_trend.update_layout(
+                height=400, hovermode="x unified",
+                legend=dict(orientation="h", y=-0.18),
+                **PLOTLY_TEMPLATE
+            )
+            st.plotly_chart(fig_trend, use_container_width=True)
+
+        # ─────────────────────────────────────────────
+        # SOTTO-TAB B — FERIE & RIPOSI
+        # ─────────────────────────────────────────────
+        with st2_b:
+            st.markdown(
+                "<p style='color:#93c5fd;'>Conteggio giornaliero di <b>FP (Ferie Programmate)</b> e "
+                "<b>R (Riposi)</b> dalla tabella roster, per deposito.</p>",
+                unsafe_allow_html=True
+            )
+            try:
+                d0 = df_filtered["giorno"].min().date()
+                d1 = df_filtered["giorno"].max().date()
+                deps_str = ",".join([f"'{d}'" for d in deposito_sel])
+
+                df_fp_r = pd.read_sql(f"""
+                    SELECT
+                        data                                  AS giorno,
+                        deposito,
+                        COUNT(*) FILTER (WHERE turno = 'FP') AS ferie_programmate,
+                        COUNT(*) FILTER (WHERE turno = 'R')  AS riposi
+                    FROM roster
+                    WHERE data BETWEEN '{d0}' AND '{d1}'
+                      AND deposito IN ({deps_str})
+                    GROUP BY data, deposito
+                    ORDER BY data, deposito;
+                """, get_conn())
+                df_fp_r["giorno"] = pd.to_datetime(df_fp_r["giorno"])
+                fp_r_daily = df_fp_r.groupby("giorno")[["ferie_programmate", "riposi"]].sum().reset_index()
+
+                k1, k2, k3, k4 = st.columns(4)
+                with k1: st.metric("🏖️ Tot. Ferie Programmate", f"{int(fp_r_daily['ferie_programmate'].sum()):,}")
+                with k2: st.metric("💤 Tot. Riposi",            f"{int(fp_r_daily['riposi'].sum()):,}")
+                with k3: st.metric("📅 Media FP/giorno",        f"{fp_r_daily['ferie_programmate'].mean():.1f}")
+                with k4: st.metric("📅 Media Riposi/giorno",    f"{fp_r_daily['riposi'].mean():.1f}")
+
+                st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+
+                view_fp_r = st.radio(
+                    "Visualizza", ["Per tipo (FP vs R)", "Per deposito"],
+                    horizontal=True, key="view_fp_r"
+                )
+
+                if view_fp_r == "Per tipo (FP vs R)":
+                    fig_fpr = go.Figure()
+                    fig_fpr.add_trace(go.Bar(
+                        x=fp_r_daily["giorno"], y=fp_r_daily["ferie_programmate"],
+                        name="Ferie Programmate (FP)", marker_color="#22c55e",
+                        hovertemplate="<b>FP</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+                    ))
+                    fig_fpr.add_trace(go.Bar(
+                        x=fp_r_daily["giorno"], y=fp_r_daily["riposi"],
+                        name="Riposi (R)", marker_color="#3b82f6",
+                        hovertemplate="<b>R</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+                    ))
+                    fig_fpr.update_layout(
+                        barmode="stack", height=450, hovermode="x unified",
+                        plot_bgcolor="rgba(15,23,42,0.8)", paper_bgcolor="rgba(15,23,42,0.5)",
+                        font=dict(color="#cbd5e1"),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                        xaxis=dict(tickformat="%d/%m", tickangle=-45,
+                                   gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
+                        yaxis=dict(title="Persone",
+                                   gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
+                    )
+                    st.plotly_chart(fig_fpr, use_container_width=True)
+                else:
+                    tipo_dep = st.radio("Tipo", ["FP", "R"], horizontal=True, key="tipo_dep_fpr")
+                    col_sel  = "ferie_programmate" if tipo_dep == "FP" else "riposi"
+                    fig_fpr_dep = go.Figure()
+                    for dep in sorted(df_fp_r["deposito"].unique()):
+                        df_d = df_fp_r[df_fp_r["deposito"] == dep]
+                        fig_fpr_dep.add_trace(go.Bar(
+                            x=df_d["giorno"], y=df_d[col_sel],
+                            name=dep.title(), marker_color=get_colore_deposito(dep),
+                            hovertemplate=f"<b>{dep.title()}</b><br>%{{x|%d/%m/%Y}}: <b>%{{y}}</b><extra></extra>"
+                        ))
+                    fig_fpr_dep.update_layout(
+                        barmode="stack", height=450, hovermode="x unified",
+                        title=f"{'Ferie Programmate' if tipo_dep == 'FP' else 'Riposi'} per Deposito",
+                        plot_bgcolor="rgba(15,23,42,0.8)", paper_bgcolor="rgba(15,23,42,0.5)",
+                        font=dict(color="#cbd5e1"),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                        xaxis=dict(tickformat="%d/%m", tickangle=-45,
+                                   gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
+                        yaxis=dict(title="Persone",
+                                   gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
+                    )
+                    st.plotly_chart(fig_fpr_dep, use_container_width=True)
+
+            except Exception as e:
+                st.warning(f"⚠️ Errore ferie/riposi: {e}")
+
+        # ─────────────────────────────────────────────
+        # SOTTO-TAB C — ASSENZE COMPLETE
+        # ─────────────────────────────────────────────
+        with st2_c:
+            st.markdown(
+                "<p style='color:#93c5fd;'>Assenze statistiche + nominali dal roster: "
+                "<b>PS</b> · <b>AP</b> (Aspettativa) · <b>PADm</b> (Congedo straord.) · <b>NF</b> (Non in forza).</p>",
+                unsafe_allow_html=True
+            )
+            try:
+                d0 = df_filtered["giorno"].min().date()
+                d1 = df_filtered["giorno"].max().date()
+                deps_str = ",".join([f"'{d}'" for d in deposito_sel])
+
+                df_nominali = pd.read_sql(f"""
+                    SELECT
+                        data AS giorno, deposito,
+                        COUNT(*) FILTER (WHERE turno = 'PS')   AS ps,
+                        COUNT(*) FILTER (WHERE turno = 'AP')   AS aspettativa,
+                        COUNT(*) FILTER (WHERE turno = 'PADm') AS congedo_straord,
+                        COUNT(*) FILTER (WHERE turno = 'NF')   AS non_in_forza
+                    FROM roster
+                    WHERE data BETWEEN '{d0}' AND '{d1}'
+                      AND deposito IN ({deps_str})
+                    GROUP BY data, deposito
+                    ORDER BY data, deposito;
+                """, get_conn())
+                df_nominali["giorno"] = pd.to_datetime(df_nominali["giorno"])
+                nom_daily = df_nominali.groupby("giorno")[["ps","aspettativa","congedo_straord","non_in_forza"]].sum().reset_index()
+
+                stat_daily = df_filtered.groupby("giorno").agg(
+                    infortuni=("infortuni","sum"), malattie=("malattie","sum"),
+                    legge_104=("legge_104","sum"), altre_assenze=("altre_assenze","sum"),
+                    congedo_parentale=("congedo_parentale","sum"), permessi_vari=("permessi_vari","sum"),
+                ).reset_index()
+
+                df_assenze_full = stat_daily.merge(nom_daily, on="giorno", how="left").fillna(0)
+
+                k1,k2,k3,k4,k5,k6 = st.columns(6)
+                with k1: st.metric("🤕 Infortuni",       f"{int(df_assenze_full['infortuni'].sum()):,}")
+                with k2: st.metric("🤒 Malattie",         f"{int(df_assenze_full['malattie'].sum()):,}")
+                with k3: st.metric("♿ L.104",             f"{int(df_assenze_full['legge_104'].sum()):,}")
+                with k4: st.metric("📋 PS",               f"{int(df_assenze_full['ps'].sum()):,}")
+                with k5: st.metric("⏸️ Aspettativa",     f"{int(df_assenze_full['aspettativa'].sum()):,}")
+                with k6: st.metric("🔴 Non in forza",    f"{int(df_assenze_full['non_in_forza'].sum()):,}")
+
+                st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+
+                palette_stat = [
+                    ("infortuni",         "Infortuni",         "#ef4444"),
+                    ("malattie",          "Malattie",          "#f97316"),
+                    ("legge_104",         "L.104",             "#eab308"),
+                    ("altre_assenze",     "Altre assenze",     "#a78bfa"),
+                    ("congedo_parentale", "Congedo parentale", "#06b6d4"),
+                    ("permessi_vari",     "Permessi vari",     "#22c55e"),
+                ]
+                palette_nom = [
+                    ("ps",              "PS",                   "#f43f5e"),
+                    ("aspettativa",     "AP (Aspettativa)",     "#8b5cf6"),
+                    ("congedo_straord", "PADm (Cong. straord.)", "#0ea5e9"),
+                    ("non_in_forza",    "NF (Non in forza)",    "#64748b"),
+                ]
+
+                fig_ass = go.Figure()
+                for col, label, colore in palette_stat:
+                    fig_ass.add_trace(go.Bar(
+                        x=df_assenze_full["giorno"], y=df_assenze_full[col],
+                        name=label, marker_color=colore,
+                        hovertemplate=f"<b>{label}</b><br>%{{x|%d/%m/%Y}}: <b>%{{y:.1f}}</b><extra></extra>"
+                    ))
+                for col, label, colore in palette_nom:
+                    fig_ass.add_trace(go.Bar(
+                        x=df_assenze_full["giorno"], y=df_assenze_full[col],
+                        name=label, marker_color=colore,
+                        marker_line=dict(width=1, color="rgba(255,255,255,0.4)"),
+                        hovertemplate=f"<b>{label}</b><br>%{{x|%d/%m/%Y}}: <b>%{{y}}</b><extra></extra>"
+                    ))
+                fig_ass.update_layout(
+                    barmode="stack", height=520, hovermode="x unified",
+                    plot_bgcolor="rgba(15,23,42,0.8)", paper_bgcolor="rgba(15,23,42,0.5)",
+                    font=dict(color="#cbd5e1", family="Arial, sans-serif"),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=10)),
+                    xaxis=dict(title="Data", tickformat="%d/%m", tickangle=-45,
+                               gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
+                    yaxis=dict(title="Persone assenti",
+                               gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
+                )
+                st.plotly_chart(fig_ass, use_container_width=True)
+
+                with st.expander("🔍 Dettaglio singolo deposito"):
+                    dep_ass = st.selectbox(
+                        "Deposito", sorted(deposito_sel), key="dep_ass_detail",
+                        format_func=lambda x: x.title()
+                    )
+                    df_dep_stat = df_filtered[df_filtered["deposito"] == dep_ass].groupby("giorno").agg(
+                        infortuni=("infortuni","sum"), malattie=("malattie","sum"),
+                        legge_104=("legge_104","sum"), altre_assenze=("altre_assenze","sum"),
+                        congedo_parentale=("congedo_parentale","sum"), permessi_vari=("permessi_vari","sum"),
+                    ).reset_index()
+                    df_dep_nom = df_nominali[df_nominali["deposito"] == dep_ass].copy()
+                    df_dep_full = df_dep_stat.merge(
+                        df_dep_nom[["giorno","ps","aspettativa","congedo_straord","non_in_forza"]],
+                        on="giorno", how="left"
+                    ).fillna(0)
+                    fig_dep_ass = go.Figure()
+                    for col, label, colore in palette_stat + palette_nom:
+                        fig_dep_ass.add_trace(go.Bar(
+                            x=df_dep_full["giorno"], y=df_dep_full[col],
+                            name=label, marker_color=colore,
+                            hovertemplate=f"<b>{label}</b><br>%{{x|%d/%m/%Y}}: <b>%{{y:.1f}}</b><extra></extra>"
+                        ))
+                    fig_dep_ass.update_layout(
+                        barmode="stack", height=420, hovermode="x unified",
+                        title=f"Assenze — {dep_ass.title()}",
+                        plot_bgcolor="rgba(15,23,42,0.8)", paper_bgcolor="rgba(15,23,42,0.5)",
+                        font=dict(color="#cbd5e1"),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=10)),
+                        xaxis=dict(tickformat="%d/%m", tickangle=-45,
+                                   gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
+                        yaxis=dict(title="Persone",
+                                   gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
+                    )
+                    st.plotly_chart(fig_dep_ass, use_container_width=True)
+
+            except Exception as e:
+                st.warning(f"⚠️ Errore assenze: {e}")
+
+        # ─────────────────────────────────────────────
+        # SOTTO-TAB D — DISTRIBUZIONE GAP (box + heatmap)
+        # ─────────────────────────────────────────────
+        with st2_d:
+            st.markdown("#### <i class='fas fa-fire'></i> Heatmap Criticità Gap", unsafe_allow_html=True)
+            pivot_gap = df_filtered.pivot_table(
+                values="gap", index="deposito",
+                columns=df_filtered["giorno"].dt.strftime("%d/%m"),
+                aggfunc="sum", fill_value=0
+            )
+            if len(pivot_gap) > 0:
+                fig_heat2 = go.Figure(go.Heatmap(
+                    z=pivot_gap.values, x=pivot_gap.columns, y=pivot_gap.index,
+                    colorscale=[[0,"#7f1d1d"],[0.3,"#dc2626"],[0.45,"#fb923c"],
+                                 [0.5,"#fef3c7"],[0.55,"#86efac"],[0.7,"#22c55e"],[1,"#14532d"]],
+                    zmid=0, text=pivot_gap.values, texttemplate="%{text:.0f}",
+                    colorbar=dict(title="Gap")
+                ))
+                fig_heat2.update_layout(height=max(320, len(pivot_gap) * 40), **PLOTLY_TEMPLATE)
+                st.plotly_chart(fig_heat2, use_container_width=True)
+
+            st.markdown("---")
+            st.markdown("#### <i class='fas fa-calculator'></i> Statistiche Descrittive", unsafe_allow_html=True)
+            st.dataframe(
+                df_filtered[["gap","disponibili_netti","assenze_previste","turni_richiesti"]].describe().T.round(2),
+                use_container_width=True
+            )
 
 
 # ══════════════════════════════════════════════════
@@ -1362,279 +1627,11 @@ with tab4:
         )
 
 
+
 # ══════════════════════════════════════════════════
-# TAB 5 — DEEP DIVE: FERIE, RIPOSI, ASSENZE
+# TAB 5 — EXPORT
 # ══════════════════════════════════════════════════
 with tab5:
-    if len(df_filtered) == 0:
-        st.info("Nessun dato per i filtri selezionati.")
-    else:
-
-        # ────────────────────────────────────────────────
-        # SEZIONE 1 — FERIE PROGRAMMATE (FP) E RIPOSI (R)
-        # ────────────────────────────────────────────────
-        st.markdown("### <i class='fas fa-umbrella-beach'></i> Distribuzione Ferie e Riposi", unsafe_allow_html=True)
-        st.markdown(
-            "<p style='color:#93c5fd;'>Conteggio giornaliero di <b>FP (Ferie Programmate)</b> e "
-            "<b>R (Riposi)</b> dalla tabella roster, per deposito.</p>",
-            unsafe_allow_html=True
-        )
-
-        try:
-            # Filtro date per la query
-            d0 = df_filtered["giorno"].min().date()
-            d1 = df_filtered["giorno"].max().date()
-            deps_str = ",".join([f"'{d}'" for d in deposito_sel])
-
-            df_fp_r = pd.read_sql(f"""
-                SELECT
-                    data                                    AS giorno,
-                    deposito,
-                    COUNT(*) FILTER (WHERE turno = 'FP')   AS ferie_programmate,
-                    COUNT(*) FILTER (WHERE turno = 'R')    AS riposi
-                FROM roster
-                WHERE data BETWEEN '{d0}' AND '{d1}'
-                  AND deposito IN ({deps_str})
-                GROUP BY data, deposito
-                ORDER BY data, deposito;
-            """, get_conn())
-            df_fp_r["giorno"] = pd.to_datetime(df_fp_r["giorno"])
-
-            # Aggregazione giornaliera totale (tutti i depositi selezionati)
-            fp_r_daily = df_fp_r.groupby("giorno")[["ferie_programmate","riposi"]].sum().reset_index()
-
-            # KPI
-            k1, k2, k3, k4 = st.columns(4)
-            with k1: st.metric("🏖️ Tot. Ferie Programmate", f"{int(fp_r_daily['ferie_programmate'].sum()):,}")
-            with k2: st.metric("💤 Tot. Riposi",            f"{int(fp_r_daily['riposi'].sum()):,}")
-            with k3: st.metric("📅 Media FP/giorno",        f"{fp_r_daily['ferie_programmate'].mean():.1f}")
-            with k4: st.metric("📅 Media Riposi/giorno",    f"{fp_r_daily['riposi'].mean():.1f}")
-
-            st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-
-            # Grafico: barre impilate per deposito, FP e R separati con toggle
-            view_fp_r = st.radio(
-                "Visualizza",
-                ["Per tipo (FP vs R)", "Per deposito"],
-                horizontal=True, key="view_fp_r"
-            )
-
-            if view_fp_r == "Per tipo (FP vs R)":
-                fig_fpr = go.Figure()
-                fig_fpr.add_trace(go.Bar(
-                    x=fp_r_daily["giorno"], y=fp_r_daily["ferie_programmate"],
-                    name="Ferie Programmate (FP)",
-                    marker_color="#22c55e",
-                    hovertemplate="<b>FP</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
-                ))
-                fig_fpr.add_trace(go.Bar(
-                    x=fp_r_daily["giorno"], y=fp_r_daily["riposi"],
-                    name="Riposi (R)",
-                    marker_color="#3b82f6",
-                    hovertemplate="<b>R</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
-                ))
-                fig_fpr.update_layout(
-                    barmode="stack", height=450, hovermode="x unified",
-                    plot_bgcolor="rgba(15,23,42,0.8)", paper_bgcolor="rgba(15,23,42,0.5)",
-                    font=dict(color="#cbd5e1"),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    xaxis=dict(tickformat="%d/%m", tickangle=-45,
-                               gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
-                    yaxis=dict(title="Persone",
-                               gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
-                )
-                st.plotly_chart(fig_fpr, use_container_width=True)
-
-            else:  # Per deposito
-                tipo_dep = st.radio("Tipo", ["FP", "R"], horizontal=True, key="tipo_dep_fpr")
-                col_map  = {"FP": "ferie_programmate", "R": "riposi"}
-                col_sel  = col_map[tipo_dep]
-
-                fig_fpr_dep = go.Figure()
-                for dep in sorted(df_fp_r["deposito"].unique()):
-                    df_d = df_fp_r[df_fp_r["deposito"] == dep]
-                    fig_fpr_dep.add_trace(go.Bar(
-                        x=df_d["giorno"], y=df_d[col_sel],
-                        name=dep.title(),
-                        marker_color=get_colore_deposito(dep),
-                        hovertemplate=f"<b>{dep.title()}</b><br>%{{x|%d/%m/%Y}}: <b>%{{y}}</b><extra></extra>"
-                    ))
-                fig_fpr_dep.update_layout(
-                    barmode="stack", height=450, hovermode="x unified",
-                    title=f"{'Ferie Programmate' if tipo_dep=='FP' else 'Riposi'} per Deposito",
-                    plot_bgcolor="rgba(15,23,42,0.8)", paper_bgcolor="rgba(15,23,42,0.5)",
-                    font=dict(color="#cbd5e1"),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    xaxis=dict(tickformat="%d/%m", tickangle=-45,
-                               gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
-                    yaxis=dict(title="Persone",
-                               gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
-                )
-                st.plotly_chart(fig_fpr_dep, use_container_width=True)
-
-        except Exception as e:
-            st.warning(f"⚠️ Errore caricamento ferie/riposi: {e}")
-
-        st.markdown("---")
-
-        # ────────────────────────────────────────────────
-        # SEZIONE 2 — GRAFICO ASSENZE COMPLETO
-        # ────────────────────────────────────────────────
-        st.markdown("### <i class='fas fa-user-slash'></i> Grafico Assenze Completo", unsafe_allow_html=True)
-        st.markdown(
-            "<p style='color:#93c5fd;'>Combina le <b>assenze statistiche</b> (tabella assenze) "
-            "con le <b>assenze nominali</b> dal roster: "
-            "<b>PS</b> · <b>AP</b> (Aspettativa) · <b>PADm</b> (Congedo straordinario) · <b>NF</b> (Non in forza).</p>",
-            unsafe_allow_html=True
-        )
-
-        try:
-            d0 = df_filtered["giorno"].min().date()
-            d1 = df_filtered["giorno"].max().date()
-            deps_str = ",".join([f"'{d}'" for d in deposito_sel])
-
-            # Assenze nominali dal roster (PS, AP, PADm, NF)
-            df_nominali = pd.read_sql(f"""
-                SELECT
-                    data                                            AS giorno,
-                    deposito,
-                    COUNT(*) FILTER (WHERE turno = 'PS')           AS ps,
-                    COUNT(*) FILTER (WHERE turno = 'AP')           AS aspettativa,
-                    COUNT(*) FILTER (WHERE turno = 'PADm')         AS congedo_straord,
-                    COUNT(*) FILTER (WHERE turno = 'NF')           AS non_in_forza
-                FROM roster
-                WHERE data BETWEEN '{d0}' AND '{d1}'
-                  AND deposito IN ({deps_str})
-                GROUP BY data, deposito
-                ORDER BY data, deposito;
-            """, get_conn())
-            df_nominali["giorno"] = pd.to_datetime(df_nominali["giorno"])
-
-            # Aggrega nominali per giorno (tutti i depositi)
-            nom_daily = df_nominali.groupby("giorno")[["ps","aspettativa","congedo_straord","non_in_forza"]].sum().reset_index()
-
-            # Assenze statistiche già in df_filtered — aggrega per giorno
-            stat_daily = df_filtered.groupby("giorno").agg(
-                infortuni=("infortuni","sum"),
-                malattie=("malattie","sum"),
-                legge_104=("legge_104","sum"),
-                altre_assenze=("altre_assenze","sum"),
-                congedo_parentale=("congedo_parentale","sum"),
-                permessi_vari=("permessi_vari","sum"),
-            ).reset_index()
-
-            # Merge
-            df_assenze_full = stat_daily.merge(nom_daily, on="giorno", how="left").fillna(0)
-
-            # KPI totali
-            k1, k2, k3, k4, k5, k6 = st.columns(6)
-            with k1: st.metric("🤕 Infortuni",    f"{int(df_assenze_full['infortuni'].sum()):,}")
-            with k2: st.metric("🤒 Malattie",      f"{int(df_assenze_full['malattie'].sum()):,}")
-            with k3: st.metric("♿ L.104",          f"{int(df_assenze_full['legge_104'].sum()):,}")
-            with k4: st.metric("📋 PS",             f"{int(df_assenze_full['ps'].sum()):,}")
-            with k5: st.metric("⏸️ Aspettativa",   f"{int(df_assenze_full['aspettativa'].sum()):,}")
-            with k6: st.metric("🔴 Non in forza",  f"{int(df_assenze_full['non_in_forza'].sum()):,}")
-
-            st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-
-            # Grafico stacked area / bar con tutte le tipologie
-            fig_ass = go.Figure()
-
-            # Assenze statistiche (area semitrasparente)
-            palette_stat = [
-                ("infortuni",        "Infortuni",              "#ef4444"),
-                ("malattie",         "Malattie",               "#f97316"),
-                ("legge_104",        "L.104",                  "#eab308"),
-                ("altre_assenze",    "Altre assenze",          "#a78bfa"),
-                ("congedo_parentale","Congedo parentale",      "#06b6d4"),
-                ("permessi_vari",    "Permessi vari",          "#22c55e"),
-            ]
-            for col, label, colore in palette_stat:
-                fig_ass.add_trace(go.Bar(
-                    x=df_assenze_full["giorno"], y=df_assenze_full[col],
-                    name=label, marker_color=colore,
-                    hovertemplate=f"<b>{label}</b><br>%{{x|%d/%m/%Y}}: <b>%{{y:.1f}}</b><extra></extra>"
-                ))
-
-            # Assenze nominali (bordo bianco per distinguerle)
-            palette_nom = [
-                ("ps",              "PS",                      "#f43f5e"),
-                ("aspettativa",     "AP (Aspettativa)",        "#8b5cf6"),
-                ("congedo_straord", "PADm (Cong. straord.)",   "#0ea5e9"),
-                ("non_in_forza",    "NF (Non in forza)",       "#64748b"),
-            ]
-            for col, label, colore in palette_nom:
-                fig_ass.add_trace(go.Bar(
-                    x=df_assenze_full["giorno"], y=df_assenze_full[col],
-                    name=label, marker_color=colore,
-                    marker_line=dict(width=1, color="rgba(255,255,255,0.4)"),
-                    hovertemplate=f"<b>{label}</b><br>%{{x|%d/%m/%Y}}: <b>%{{y}}</b><extra></extra>"
-                ))
-
-            fig_ass.update_layout(
-                barmode="stack", height=520, hovermode="x unified",
-                plot_bgcolor="rgba(15,23,42,0.8)", paper_bgcolor="rgba(15,23,42,0.5)",
-                font=dict(color="#cbd5e1", family="Arial, sans-serif"),
-                legend=dict(
-                    orientation="h", yanchor="bottom", y=1.02,
-                    xanchor="right", x=1, font=dict(size=10)
-                ),
-                xaxis=dict(
-                    title="Data", tickformat="%d/%m", tickangle=-45,
-                    gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)",
-                ),
-                yaxis=dict(
-                    title="Persone assenti",
-                    gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)",
-                ),
-            )
-            st.plotly_chart(fig_ass, use_container_width=True)
-
-            # Breakdown per deposito (expander)
-            with st.expander("🔍 Dettaglio per deposito"):
-                dep_ass = st.selectbox(
-                    "Deposito", sorted(deposito_sel), key="dep_ass_detail",
-                    format_func=lambda x: x.title()
-                )
-                df_dep_stat = df_filtered[df_filtered["deposito"] == dep_ass].groupby("giorno").agg(
-                    infortuni=("infortuni","sum"), malattie=("malattie","sum"),
-                    legge_104=("legge_104","sum"), altre_assenze=("altre_assenze","sum"),
-                    congedo_parentale=("congedo_parentale","sum"), permessi_vari=("permessi_vari","sum"),
-                ).reset_index()
-                df_dep_nom = df_nominali[df_nominali["deposito"] == dep_ass].copy()
-                df_dep_full = df_dep_stat.merge(
-                    df_dep_nom[["giorno","ps","aspettativa","congedo_straord","non_in_forza"]],
-                    on="giorno", how="left"
-                ).fillna(0)
-
-                fig_dep_ass = go.Figure()
-                for col, label, colore in palette_stat + palette_nom:
-                    fig_dep_ass.add_trace(go.Bar(
-                        x=df_dep_full["giorno"], y=df_dep_full[col],
-                        name=label, marker_color=colore,
-                        hovertemplate=f"<b>{label}</b><br>%{{x|%d/%m/%Y}}: <b>%{{y:.1f}}</b><extra></extra>"
-                    ))
-                fig_dep_ass.update_layout(
-                    barmode="stack", height=420, hovermode="x unified",
-                    title=f"Assenze — {dep_ass.title()}",
-                    plot_bgcolor="rgba(15,23,42,0.8)", paper_bgcolor="rgba(15,23,42,0.5)",
-                    font=dict(color="#cbd5e1"),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=10)),
-                    xaxis=dict(tickformat="%d/%m", tickangle=-45,
-                               gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
-                    yaxis=dict(title="Persone",
-                               gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
-                )
-                st.plotly_chart(fig_dep_ass, use_container_width=True)
-
-        except Exception as e:
-            st.warning(f"⚠️ Errore caricamento assenze: {e}")
-
-
-# ══════════════════════════════════════════════════
-# TAB 6 — EXPORT
-# ══════════════════════════════════════════════════
-with tab6:
     st.markdown("#### <i class='fas fa-download'></i> Export Dati e Report", unsafe_allow_html=True)
     col_exp1, col_exp2 = st.columns(2)
 
