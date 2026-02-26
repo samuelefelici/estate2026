@@ -453,26 +453,25 @@ def load_turni_calendario() -> pd.DataFrame:
 @st.cache_data(ttl=600)
 def load_copertura() -> pd.DataFrame:
     """
-    Calcolo copertura giornaliera per deposito.
     Formula:
-      persone_in_forza   = COUNT DISTINCT matricola in roster
-      con_turno          = COUNT righe con turno valorizzato (non null, non vuoto)
-      assenze_statistiche= somma tabella assenze (join su daytype dal calendar)
-      turni_richiesti    = conteggio da turni_giornalieri
-      disponibili        = persone_in_forza - con_turno - assenze_statistiche
-      gap                = disponibili - turni_richiesti
+      persone_in_forza    = COUNT DISTINCT matricola (roster)
+      assenze_nominali    = COUNT(*) WHERE turno IS NOT NULL AND turno <> ''
+      assenze_statistiche = tabella assenze (medie storiche per deposito+daytype)
+      turni_richiesti     = da turni_giornalieri
+      buffer              = persone_in_forza - turni_richiesti
+                            - assenze_nominali - assenze_statistiche
+      gap negativo (< 0) = allarme: non bastano le persone per coprire tutto
     """
     query = """
         WITH
         forza AS (
             SELECT
-                r.data                          AS giorno,
+                r.data                              AS giorno,
                 r.deposito,
-                COUNT(DISTINCT r.matricola)     AS persone_in_forza,
+                COUNT(DISTINCT r.matricola)         AS persone_in_forza,
                 COUNT(*) FILTER (
-                    WHERE r.turno IS NOT NULL
-                      AND r.turno <> ''
-                )                               AS con_turno
+                    WHERE r.turno IS NOT NULL AND TRIM(r.turno) <> ''
+                )                                   AS assenze_nominali
             FROM roster r
             GROUP BY r.data, r.deposito
         ),
@@ -483,7 +482,7 @@ def load_copertura() -> pd.DataFrame:
         ),
         ass AS (
             SELECT
-                c.data                          AS giorno,
+                c.data                              AS giorno,
                 a.deposito,
                 ROUND(
                     COALESCE(a.infortuni,0) +
@@ -492,7 +491,7 @@ def load_copertura() -> pd.DataFrame:
                     COALESCE(a.altre_assenze,0) +
                     COALESCE(a.congedo_parentale,0) +
                     COALESCE(a.permessi_vari,0)
-                )                               AS assenze_statistiche
+                )::int                              AS assenze_statistiche
             FROM assenze a
             JOIN calendar c ON c.daytype = a.daytype
         )
@@ -500,31 +499,20 @@ def load_copertura() -> pd.DataFrame:
             f.giorno,
             f.deposito,
             f.persone_in_forza,
-            f.con_turno,
-            COALESCE(a.assenze_statistiche, 0)  AS assenze_statistiche,
-            COALESCE(t.turni_richiesti, 0)      AS turni_richiesti,
-            GREATEST(
-                f.persone_in_forza
-                - f.con_turno
-                - COALESCE(a.assenze_statistiche, 0),
-                0
-            )                                   AS disponibili,
-            (
-                GREATEST(
-                    f.persone_in_forza
-                    - f.con_turno
-                    - COALESCE(a.assenze_statistiche, 0),
-                    0
-                )
-                - COALESCE(t.turni_richiesti, 0)
-            )                                   AS gap
+            COALESCE(t.turni_richiesti,    0)       AS turni_richiesti,
+            f.assenze_nominali,
+            COALESCE(a.assenze_statistiche, 0)      AS assenze_statistiche,
+            -- buffer positivo o gap negativo
+            f.persone_in_forza
+            - COALESCE(t.turni_richiesti,    0)
+            - f.assenze_nominali
+            - COALESCE(a.assenze_statistiche, 0)    AS gap
         FROM forza f
         LEFT JOIN turni t USING (giorno, deposito)
         LEFT JOIN ass   a USING (giorno, deposito)
         ORDER BY f.giorno, f.deposito;
     """
     return pd.read_sql(query, get_conn())
-
 
 # --- caricamento iniziale ---
 try:
@@ -670,7 +658,7 @@ df_filtered = df_filtered[
 # --- filtro df_copertura ---
 if len(df_copertura) > 0:
     if ferie_10:
-        # applica +5 FP ad Ancona e +5 distribuite proporzionalmente agli altri
+        # +5 ferie ad Ancona, +5 distribuite proporzionalmente agli altri depositi
         df_cop = df_copertura.copy()
         df_cop["deposito_norm"] = df_cop["deposito"].str.strip().str.lower()
         df_cop["ferie_extra"] = 0.0
@@ -682,9 +670,14 @@ if len(df_copertura) > 0:
             sum_p = elig.groupby("giorno")["peso"].transform("sum")
             elig["quota"] = np.where(sum_p > 0, 5.0 * elig["peso"] / sum_p, 0.0)
             df_cop.loc[elig.index, "ferie_extra"] += elig["quota"].values
-        df_cop["assenze_statistiche"] = df_cop["assenze_statistiche"] + df_cop["ferie_extra"]
-        df_cop["disponibili"] = (df_cop["disponibili"] - df_cop["ferie_extra"]).clip(lower=0)
-        df_cop["gap"] = df_cop["disponibili"] - df_cop["turni_richiesti"]
+        # Le ferie extra aumentano le assenze nominali e riducono il buffer/gap
+        df_cop["assenze_nominali"]    = df_cop["assenze_nominali"] + df_cop["ferie_extra"]
+        df_cop["gap"]                 = (
+            df_cop["persone_in_forza"]
+            - df_cop["turni_richiesti"]
+            - df_cop["assenze_nominali"]
+            - df_cop["assenze_statistiche"]
+        )
         df_cop.drop(columns=["deposito_norm", "ferie_extra"], inplace=True)
         df_copertura_filtered = df_cop
     else:
@@ -871,153 +864,195 @@ with tab1:
             )
 
             if len(df_copertura_filtered) > 0:
+                # ── Aggrega per giorno (tutti i depositi selezionati) ──────────
                 cop = df_copertura_filtered.groupby("giorno").agg(
-                    persone_in_forza=("persone_in_forza", "sum"),
-                    con_turno=("con_turno", "sum"),
-                    assenze_statistiche=("assenze_statistiche", "sum"),
-                    turni_richiesti=("turni_richiesti", "sum"),
-                    disponibili=("disponibili", "sum"),
-                    gap=("gap", "sum"),
+                    persone_in_forza    = ("persone_in_forza",     "sum"),
+                    turni_richiesti     = ("turni_richiesti",      "sum"),
+                    assenze_nominali    = ("assenze_nominali",     "sum"),
+                    assenze_statistiche = ("assenze_statistiche",  "sum"),
+                    gap                 = ("gap",                  "sum"),
                 ).reset_index()
 
-                # Colori gap
-                gap_colors = [
-                    "#22c55e" if g >= 0 else "#fb923c" if g >= soglia_gap else "#dc2626"
-                    for g in cop["gap"]
-                ]
+                cop["totale_assenze"] = cop["assenze_nominali"] + cop["assenze_statistiche"]
+                # Buffer = gap quando positivo; gap negativo = deficit
+                cop["buffer"]  = cop["gap"].clip(lower=0)
+                cop["deficit"] = cop["gap"].clip(upper=0).abs()
 
+                # KPI rapidi sopra il grafico
+                giorni_ok      = int((cop["gap"] >= 0).sum())
+                giorni_allarme = int((cop["gap"] <  0).sum())
+                gap_medio      = cop["gap"].mean()
+                gap_min        = cop["gap"].min()
+
+                kc1, kc2, kc3, kc4 = st.columns(4)
+                with kc1:
+                    st.metric("👥 Persone in forza (media/gg)",
+                              f"{cop['persone_in_forza'].mean():.0f}")
+                with kc2:
+                    st.metric("✅ Giorni in copertura", f"{giorni_ok}",
+                              delta=None)
+                with kc3:
+                    delta_col = "inverse" if giorni_allarme > 0 else "normal"
+                    st.metric("🚨 Giorni in deficit", f"{giorni_allarme}")
+                with kc4:
+                    st.metric("📉 Gap medio/giorno", f"{gap_medio:.1f}",
+                              delta=f"min: {gap_min:.0f}")
+
+                st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+
+                # ── Grafico principale: barre impilate + linea persone ─────────
                 fig_cop = make_subplots(
                     rows=2, cols=1,
-                    row_heights=[0.68, 0.32],
+                    row_heights=[0.70, 0.30],
                     shared_xaxes=True,
-                    vertical_spacing=0.06,
-                    subplot_titles=("Composizione giornaliera delle persone in forza", "Gap (Disponibili − Turni richiesti)"),
+                    vertical_spacing=0.05,
+                    subplot_titles=(
+                        "Come vengono utilizzate le persone in forza ogni giorno",
+                        "Buffer disponibile (▲) / Deficit (▼)"
+                    ),
                 )
 
-                # ── Barre impilate: con_turno | assenze | disponibili ──
+                # BARRA 1 — Turni richiesti (rosso scuro)
                 fig_cop.add_trace(go.Bar(
-                    x=cop["giorno"], y=cop["con_turno"],
-                    name="Con turno assegnato (FP/R/ecc.)",
-                    marker_color="rgba(59,130,246,0.75)",
-                    hovertemplate="<b>Con turno</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+                    x=cop["giorno"], y=cop["turni_richiesti"],
+                    name="🔴 Turni da coprire",
+                    marker_color="rgba(220,38,38,0.85)",
+                    hovertemplate="<b>Turni da coprire</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
                 ), row=1, col=1)
 
+                # BARRA 2 — Assenze nominali roster (blu)
+                fig_cop.add_trace(go.Bar(
+                    x=cop["giorno"], y=cop["assenze_nominali"],
+                    name="🔵 Assenze roster (FP / R / PS …)",
+                    marker_color="rgba(59,130,246,0.80)",
+                    hovertemplate="<b>Assenze roster</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+                ), row=1, col=1)
+
+                # BARRA 3 — Assenze statistiche (arancio)
                 fig_cop.add_trace(go.Bar(
                     x=cop["giorno"], y=cop["assenze_statistiche"],
-                    name="Assenze statistiche",
+                    name="🟠 Assenze storiche (infort./malattie…)",
                     marker_color="rgba(251,146,60,0.80)",
-                    hovertemplate="<b>Assenze</b><br>%{x|%d/%m/%Y}: <b>%{y:.0f}</b><extra></extra>"
+                    hovertemplate="<b>Assenze storiche</b><br>%{x|%d/%m/%Y}: <b>%{y:.0f}</b><extra></extra>"
                 ), row=1, col=1)
 
+                # BARRA 4 — Buffer (verde) o Deficit già incluso nel gap bar
                 fig_cop.add_trace(go.Bar(
-                    x=cop["giorno"], y=cop["disponibili"],
-                    name="Disponibili netti",
-                    marker_color=[
-                        "rgba(34,197,94,0.80)" if g >= 0 else "rgba(239,68,68,0.70)"
-                        for g in cop["gap"]
-                    ],
-                    hovertemplate="<b>Disponibili</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+                    x=cop["giorno"], y=cop["buffer"],
+                    name="🟢 Buffer disponibile",
+                    marker_color="rgba(34,197,94,0.70)",
+                    hovertemplate="<b>Buffer</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
                 ), row=1, col=1)
 
-                # ── Linea turni richiesti sovrapposta ──
+                # LINEA — Persone in forza totali (orizzonte massimo)
                 fig_cop.add_trace(go.Scatter(
-                    x=cop["giorno"], y=cop["turni_richiesti"],
-                    name="Turni da coprire",
-                    mode="lines+markers",
-                    line=dict(color="#ef4444", width=3),
-                    marker=dict(size=7, symbol="diamond", color="#ef4444",
-                                line=dict(color="white", width=1)),
-                    hovertemplate="<b>Turni richiesti</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+                    x=cop["giorno"], y=cop["persone_in_forza"],
+                    name="👥 Persone in forza",
+                    mode="lines",
+                    line=dict(color="#ffffff", width=2.5, dash="dot"),
+                    hovertemplate="<b>Persone in forza</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
                 ), row=1, col=1)
 
-                # ── Gap bar (riga 2) ──
+                # RIGA 2 — Gap / Buffer bar colorata
+                gap_colors = [
+                    "#22c55e" if g >= 5 else
+                    "#eab308" if g >= 0 else
+                    "#fb923c" if g >= soglia_gap else
+                    "#dc2626"
+                    for g in cop["gap"]
+                ]
                 fig_cop.add_trace(go.Bar(
                     x=cop["giorno"], y=cop["gap"],
                     name="Gap",
-                    marker=dict(
-                        color=gap_colors,
-                        line=dict(width=0.5, color="rgba(255,255,255,0.15)")
-                    ),
+                    marker=dict(color=gap_colors,
+                                line=dict(width=0.5, color="rgba(255,255,255,0.1)")),
                     showlegend=False,
-                    hovertemplate="<b>Gap</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+                    hovertemplate=(
+                        "<b>%{x|%d/%m/%Y}</b><br>"
+                        "Gap: <b>%{y}</b><br>"
+                        "<i>positivo = buffer · negativo = DEFICIT</i>"
+                        "<extra></extra>"
+                    )
                 ), row=2, col=1)
 
-                fig_cop.add_hline(
-                    y=0, line_dash="solid", line_color="rgba(255,255,255,0.3)",
-                    line_width=1, row=2, col=1
-                )
-                fig_cop.add_hline(
-                    y=soglia_gap, line_dash="dash", line_color="#dc2626",
-                    line_width=2,
-                    annotation_text=f"Soglia critica ({soglia_gap})",
-                    annotation_font_color="#dc2626",
-                    row=2, col=1
-                )
+                fig_cop.add_hline(y=0, line_dash="solid",
+                                  line_color="rgba(255,255,255,0.5)", line_width=1.5,
+                                  row=2, col=1)
+                if soglia_gap < 0:
+                    fig_cop.add_hline(
+                        y=soglia_gap, line_dash="dash", line_color="#dc2626",
+                        line_width=2,
+                        annotation_text=f"Soglia critica ({soglia_gap})",
+                        annotation_font=dict(color="#dc2626", size=11),
+                        annotation_position="top left",
+                        row=2, col=1
+                    )
 
                 fig_cop.update_layout(
                     barmode="stack",
-                    height=640,
+                    height=700,
                     hovermode="x unified",
                     showlegend=True,
                     legend=dict(
                         orientation="h", yanchor="bottom", y=1.02,
-                        xanchor="right", x=1, font=dict(size=11)
+                        xanchor="right", x=1, font=dict(size=11),
+                        bgcolor="rgba(15,23,42,0.7)",
+                        bordercolor="rgba(96,165,250,0.2)", borderwidth=1,
                     ),
-                    plot_bgcolor="rgba(15,23,42,0.8)",
-                    paper_bgcolor="rgba(15,23,42,0.5)",
+                    plot_bgcolor="rgba(15,23,42,0.85)",
+                    paper_bgcolor="rgba(15,23,42,0.0)",
                     font=dict(color="#cbd5e1", family="Arial, sans-serif"),
+                    margin=dict(t=60, b=20, l=10, r=10),
                 )
                 fig_cop.update_xaxes(
                     tickformat="%d/%m", tickangle=-45,
-                    gridcolor="rgba(96,165,250,0.1)",
-                    linecolor="rgba(96,165,250,0.3)"
+                    gridcolor="rgba(96,165,250,0.08)",
+                    linecolor="rgba(96,165,250,0.2)",
+                    showgrid=True,
                 )
                 fig_cop.update_yaxes(
-                    gridcolor="rgba(96,165,250,0.1)",
-                    linecolor="rgba(96,165,250,0.3)"
+                    gridcolor="rgba(96,165,250,0.08)",
+                    linecolor="rgba(96,165,250,0.2)",
+                    zeroline=False,
                 )
                 fig_cop.update_yaxes(title_text="Persone", row=1, col=1)
                 fig_cop.update_yaxes(title_text="Gap", row=2, col=1)
 
                 st.plotly_chart(fig_cop, use_container_width=True, key="pc_main_cop")
 
-                # ── Legenda testuale rapida ──
-                l1, l2, l3, l4 = st.columns(4)
-                with l1:
-                    st.markdown(
-                        "<div style='background:rgba(59,130,246,0.2);border-left:4px solid #3b82f6;"
-                        "border-radius:8px;padding:10px 14px;'>"
-                        "<span style='color:#93c5fd;font-size:0.8rem;font-weight:700;'>🔵 CON TURNO</span><br>"
-                        "<span style='color:#cbd5e1;font-size:0.8rem;'>FP, R, PS, AP, PADm, NF e altri codici assegnati</span>"
-                        "</div>", unsafe_allow_html=True
-                    )
-                with l2:
-                    st.markdown(
-                        "<div style='background:rgba(251,146,60,0.2);border-left:4px solid #fb923c;"
-                        "border-radius:8px;padding:10px 14px;'>"
-                        "<span style='color:#fed7aa;font-size:0.8rem;font-weight:700;'>🟠 ASSENZE STATISTICHE</span><br>"
-                        "<span style='color:#cbd5e1;font-size:0.8rem;'>Infortuni, malattie, L.104, permessi (stima)</span>"
-                        "</div>", unsafe_allow_html=True
-                    )
-                with l3:
-                    st.markdown(
-                        "<div style='background:rgba(34,197,94,0.2);border-left:4px solid #22c55e;"
-                        "border-radius:8px;padding:10px 14px;'>"
-                        "<span style='color:#bbf7d0;font-size:0.8rem;font-weight:700;'>🟢 DISPONIBILI</span><br>"
-                        "<span style='color:#cbd5e1;font-size:0.8rem;'>Persone libere dopo turni assegnati e assenze</span>"
-                        "</div>", unsafe_allow_html=True
-                    )
-                with l4:
-                    st.markdown(
-                        "<div style='background:rgba(239,68,68,0.2);border-left:4px solid #ef4444;"
-                        "border-radius:8px;padding:10px 14px;'>"
-                        "<span style='color:#fecaca;font-size:0.8rem;font-weight:700;'>🔴 TURNI DA COPRIRE</span><br>"
-                        "<span style='color:#cbd5e1;font-size:0.8rem;'>Linea rossa = fabbisogno giornaliero</span>"
-                        "</div>", unsafe_allow_html=True
-                    )
+                # ── Legenda visiva (card colorate) ─────────────────────────────
+                c1, c2, c3, c4, c5 = st.columns(5)
+                cards = [
+                    (c1, "#dc2626", "rgba(220,38,38,0.15)",
+                     "🔴 Turni da coprire",
+                     "Turni che devono essere garantiti ogni giorno"),
+                    (c2, "#3b82f6", "rgba(59,130,246,0.15)",
+                     "🔵 Assenze roster",
+                     "FP, R, PS, AP, PADm, NF e tutti i codici turno assegnati"),
+                    (c3, "#fb923c", "rgba(251,146,60,0.15)",
+                     "🟠 Assenze storiche",
+                     "Infortuni, malattie, L.104, permessi (medie anni precedenti)"),
+                    (c4, "#22c55e", "rgba(34,197,94,0.15)",
+                     "🟢 Buffer",
+                     "Persone libere una volta soddisfatto tutto il fabbisogno"),
+                    (c5, "#ffffff", "rgba(255,255,255,0.05)",
+                     "⬜ Persone in forza",
+                     "Linea bianca tratteggiata = organico totale del giorno"),
+                ]
+                for col, border, bg, title, desc in cards:
+                    with col:
+                        st.markdown(
+                            f"<div style='background:{bg};border-left:4px solid {border};"
+                            f"border-radius:8px;padding:10px 12px;min-height:72px;'>"
+                            f"<span style='color:#e2e8f0;font-size:0.78rem;"
+                            f"font-weight:700;'>{title}</span><br>"
+                            f"<span style='color:#94a3b8;font-size:0.75rem;'>{desc}</span>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
 
             else:
-                st.info("Dati copertura non disponibili.")
+                st.info("Dati copertura non disponibili per i filtri selezionati.")
 
         with col_side:
             st.markdown("#### <i class='fas fa-tachometer-alt'></i> Stato Copertura", unsafe_allow_html=True)
