@@ -366,11 +366,28 @@ PLOTLY_TEMPLATE = {
 # --------------------------------------------------
 # CONNESSIONE DATABASE
 # --------------------------------------------------
-@st.cache_resource
-def get_connection():
-    return psycopg2.connect(st.secrets["DATABASE_URL"], sslmode="require")
+def get_conn():
+    """
+    Restituisce sempre una connessione valida.
+    Se la connessione cached è chiusa o rotta, la rinnova.
+    """
+    if "db_conn" not in st.session_state or st.session_state["db_conn"].closed:
+        st.session_state["db_conn"] = psycopg2.connect(
+            st.secrets["DATABASE_URL"], sslmode="require"
+        )
+    else:
+        # Testa la connessione con un ping leggero
+        try:
+            c = st.session_state["db_conn"].cursor()
+            c.execute("SELECT 1;")
+            c.close()
+        except Exception:
+            st.session_state["db_conn"] = psycopg2.connect(
+                st.secrets["DATABASE_URL"], sslmode="require"
+            )
+    return st.session_state["db_conn"]
 
-conn = get_connection()
+conn = get_conn()
 
 try:
     cur = conn.cursor()
@@ -398,7 +415,7 @@ def load_staffing() -> pd.DataFrame:
         FROM v_staffing
         ORDER BY giorno, deposito;
     """
-    return pd.read_sql(query, conn)
+    return pd.read_sql(query, get_conn())
 
 
 @st.cache_data(ttl=600)
@@ -409,7 +426,7 @@ def load_depositi_stats() -> pd.DataFrame:
         FROM v_depositi_organico_medio
         ORDER BY deposito;
     """
-    return pd.read_sql(query, conn)
+    return pd.read_sql(query, get_conn())
 
 
 @st.cache_data(ttl=600)
@@ -430,7 +447,7 @@ def load_turni_calendario() -> pd.DataFrame:
         GROUP BY tg.data, tg.deposito
         ORDER BY tg.data, tg.deposito;
     """
-    return pd.read_sql(query, conn)
+    return pd.read_sql(query, get_conn())
 
 
 # --- caricamento iniziale ---
