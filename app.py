@@ -415,21 +415,21 @@ def load_depositi_stats() -> pd.DataFrame:
 @st.cache_data(ttl=600)
 def load_turni_calendario() -> pd.DataFrame:
     """
-    Espande la tabella turni (con data_da / data_a) in righe giornaliere.
-    ⚠️  Adatta i nomi delle colonne al tuo schema se necessario.
+    Espande la tabella turni (dal / al) in righe giornaliere.
+    Conta i codici turno distinti per deposito per ogni giorno di validità.
     """
     query = """
         SELECT
             gs::date            AS giorno,
             t.deposito,
-            SUM(t.turni_richiesti) AS turni
+            COUNT(t.id)         AS turni
         FROM turni t,
-             generate_series(t.data_da, t.data_a, INTERVAL '1 day') AS gs
+             generate_series(t.dal, t.al, INTERVAL '1 day') AS gs
+        WHERE t.valid = 'true'          -- o rimuovi il filtro se vuoi vedere tutti
         GROUP BY gs::date, t.deposito
-        ORDER BY giorno, deposito;
+        ORDER BY giorno, t.deposito;
     """
     return pd.read_sql(query, conn)
-
 
 # --- caricamento iniziale ---
 try:
