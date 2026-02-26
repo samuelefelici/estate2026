@@ -1029,25 +1029,114 @@ with tab3:
             )
             st.plotly_chart(fig_tc, use_container_width=True)
 
-            # ---- tabella riepilogativa ----
+            # ---- ESPLORA CODICI TURNO PER DEPOSITO ----
             st.markdown("---")
-            st.markdown("#### <i class='fas fa-table'></i> Riepilogo Turni per Deposito", unsafe_allow_html=True)
+            st.markdown("#### <i class='fas fa-search'></i> Esplora Codici Turno per Deposito", unsafe_allow_html=True)
 
-            riepilogo_tc = (
-                df_tc_agg.groupby("deposito")["turni"]
-                .agg(
-                    Totale="sum",
-                    Media_Giorno="mean",
-                    Min="min",
-                    Max="max",
-                    Giorni_Attivi="count"
+            # Carica i codici turno dalla tabella turni (con validità)
+            try:
+                df_codici = pd.read_sql("""
+                    SELECT
+                        deposito,
+                        codice_turno,
+                        valid,
+                        dal,
+                        al
+                    FROM turni
+                    ORDER BY deposito, valid, codice_turno;
+                """, get_conn())
+                df_codici["dal"] = pd.to_datetime(df_codici["dal"]).dt.strftime("%d/%m/%Y")
+                df_codici["al"]  = pd.to_datetime(df_codici["al"]).dt.strftime("%d/%m/%Y")
+
+                depositi_con_turni = sorted(df_codici["deposito"].unique())
+
+                # Selettore deposito
+                dep_esplora = st.selectbox(
+                    "📍 Seleziona deposito",
+                    options=depositi_con_turni,
+                    format_func=lambda x: x.title(),
+                    key="dep_esplora"
                 )
-                .round(1)
-                .reset_index()
-                .rename(columns={"deposito": "Deposito", "Media_Giorno": "Media/Gg"})
-                .sort_values("Totale", ascending=False)
-            )
-            st.dataframe(riepilogo_tc, use_container_width=True, hide_index=True)
+
+                # Filtro tipo giorno
+                tipi_disponibili = sorted(df_codici[df_codici["deposito"] == dep_esplora]["valid"].unique())
+                tipo_sel = st.radio(
+                    "Tipo giorno",
+                    options=["Tutti"] + tipi_disponibili,
+                    horizontal=True,
+                    key="tipo_esplora"
+                )
+
+                df_dep_codici = df_codici[df_codici["deposito"] == dep_esplora].copy()
+                if tipo_sel != "Tutti":
+                    df_dep_codici = df_dep_codici[df_dep_codici["valid"] == tipo_sel]
+
+                # KPI rapidi
+                k1, k2, k3 = st.columns(3)
+                with k1:
+                    st.metric("🔢 Codici turno", len(df_dep_codici))
+                with k2:
+                    st.metric("📋 Tipi giorno", df_dep_codici["valid"].nunique())
+                with k3:
+                    # Periodo più comune
+                    if len(df_dep_codici) > 0:
+                        periodo = f"{df_dep_codici['dal'].iloc[0]} → {df_dep_codici['al'].iloc[0]}"
+                    else:
+                        periodo = "—"
+                    st.metric("📅 Validità", periodo)
+
+                st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+                # Griglia card codici turno
+                if len(df_dep_codici) > 0:
+                    colore_dep = get_colore_deposito(dep_esplora)
+
+                    # Raggruppa per valid per mostrare sezioni separate
+                    for tipo in sorted(df_dep_codici["valid"].unique()):
+                        df_tipo = df_dep_codici[df_dep_codici["valid"] == tipo]
+                        label_tipo = {
+                            "Lu-Ve": "📅 Lunedì — Venerdì",
+                            "Sa":    "📅 Sabato",
+                            "Do":    "📅 Domenica"
+                        }.get(tipo, tipo)
+
+                        st.markdown(
+                            f"<p style='color:#93c5fd;font-weight:700;font-size:1rem;"
+                            f"margin:16px 0 8px;letter-spacing:1px;'>{label_tipo}"
+                            f" <span style='color:#64748b;font-size:0.8rem;font-weight:400;'>"
+                            f"({len(df_tipo)} turni · {df_tipo['dal'].iloc[0]} → {df_tipo['al'].iloc[0]})"
+                            f"</span></p>",
+                            unsafe_allow_html=True
+                        )
+
+                        codici = df_tipo["codice_turno"].tolist()
+                        # Mostra in griglia a 8 colonne
+                        cols_per_row = 8
+                        for i in range(0, len(codici), cols_per_row):
+                            cols = st.columns(cols_per_row)
+                            for j, codice in enumerate(codici[i:i+cols_per_row]):
+                                with cols[j]:
+                                    st.markdown(
+                                        f"<div style='"
+                                        f"background:rgba(15,23,42,0.8);"
+                                        f"border:1px solid {colore_dep}55;"
+                                        f"border-left:3px solid {colore_dep};"
+                                        f"border-radius:8px;"
+                                        f"padding:8px 6px;"
+                                        f"text-align:center;"
+                                        f"font-size:0.85rem;"
+                                        f"font-weight:700;"
+                                        f"color:#e2e8f0;"
+                                        f"letter-spacing:0.5px;"
+                                        f"margin-bottom:6px;"
+                                        f"'>{codice}</div>",
+                                        unsafe_allow_html=True
+                                    )
+                else:
+                    st.info("Nessun codice turno trovato per la selezione.")
+
+            except Exception as e:
+                st.warning(f"⚠️ Impossibile caricare i codici turno: {e}")
 
             # ---- distribuzione % per deposito (pie) ----
             st.markdown("---")
