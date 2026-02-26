@@ -781,7 +781,7 @@ with tab1:
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 **PLOTLY_TEMPLATE
             )
-            st.plotly_chart(fig_timeline, use_container_width=True)
+            st.plotly_chart(fig_timeline, use_container_width=True, key="pc_1")
 
         with col_side:
             st.markdown("#### <i class='fas fa-tachometer-alt'></i> Stato Copertura", unsafe_allow_html=True)
@@ -806,7 +806,7 @@ with tab1:
                 }
             ))
             fig_gauge.update_layout(height=280, paper_bgcolor='rgba(15,23,42,0.5)', margin=dict(l=20, r=20, t=40, b=20))
-            st.plotly_chart(fig_gauge, use_container_width=True)
+            st.plotly_chart(fig_gauge, use_container_width=True, key="pc_2")
 
             st.markdown("#### <i class='fas fa-user-injured'></i> Assenze", unsafe_allow_html=True)
             ab = pd.DataFrame({
@@ -823,7 +823,7 @@ with tab1:
                 ))
                 fig_pie.update_layout(height=280, showlegend=False,
                                       paper_bgcolor='rgba(15,23,42,0.5)', margin=dict(l=0,r=0,t=0,b=0))
-                st.plotly_chart(fig_pie, use_container_width=True)
+                st.plotly_chart(fig_pie, use_container_width=True, key="pc_3")
 
         st.markdown("---")
         st.markdown("#### <i class='fas fa-fire'></i> Heatmap Criticità", unsafe_allow_html=True)
@@ -841,7 +841,7 @@ with tab1:
                 colorbar=dict(title="Gap")
             ))
             fig_heat.update_layout(height=max(300, len(pivot_gap) * 40), **PLOTLY_TEMPLATE)
-            st.plotly_chart(fig_heat, use_container_width=True)
+            st.plotly_chart(fig_heat, use_container_width=True, key="pc_4")
     else:
         st.info("Nessun dato per i filtri selezionati.")
 
@@ -888,7 +888,7 @@ with tab2:
                     totals={"marker": {"color": "#3b82f6"}},
                 ))
                 fig_wf.update_layout(height=420, showlegend=False, **PLOTLY_TEMPLATE)
-                st.plotly_chart(fig_wf, use_container_width=True)
+                st.plotly_chart(fig_wf, use_container_width=True, key="pc_5")
 
             with col_box:
                 st.markdown("#### <i class='fas fa-box-open'></i> Distribuzione Gap per Deposito", unsafe_allow_html=True)
@@ -903,7 +903,7 @@ with tab2:
                             hovertemplate=f"<b>{dep.title()}</b><br>Gap: %{{y}}<extra></extra>"
                         ))
                 fig_box.update_layout(height=420, showlegend=False, **PLOTLY_TEMPLATE)
-                st.plotly_chart(fig_box, use_container_width=True)
+                st.plotly_chart(fig_box, use_container_width=True, key="pc_6")
 
             st.markdown("---")
             st.markdown("#### <i class='fas fa-chart-line'></i> Trend Assenze per Tipologia", unsafe_allow_html=True)
@@ -935,7 +935,7 @@ with tab2:
                 legend=dict(orientation="h", y=-0.18),
                 **PLOTLY_TEMPLATE
             )
-            st.plotly_chart(fig_trend, use_container_width=True)
+            st.plotly_chart(fig_trend, use_container_width=True, key="pc_7")
 
         # ─────────────────────────────────────────────
         # SOTTO-TAB B — FERIE & RIPOSI
@@ -1001,7 +1001,7 @@ with tab2:
                         yaxis=dict(title="Persone",
                                    gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
                     )
-                    st.plotly_chart(fig_fpr, use_container_width=True)
+                    st.plotly_chart(fig_fpr, use_container_width=True, key="pc_8")
                 else:
                     tipo_dep = st.radio("Tipo", ["FP", "R"], horizontal=True, key="tipo_dep_fpr")
                     col_sel  = "ferie_programmate" if tipo_dep == "FP" else "riposi"
@@ -1024,7 +1024,7 @@ with tab2:
                         yaxis=dict(title="Persone",
                                    gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
                     )
-                    st.plotly_chart(fig_fpr_dep, use_container_width=True)
+                    st.plotly_chart(fig_fpr_dep, use_container_width=True, key="pc_9")
 
             except Exception as e:
                 st.warning(f"⚠️ Errore ferie/riposi: {e}")
@@ -1116,7 +1116,7 @@ with tab2:
                     yaxis=dict(title="Persone assenti",
                                gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
                 )
-                st.plotly_chart(fig_ass, use_container_width=True)
+                st.plotly_chart(fig_ass, use_container_width=True, key="pc_10")
 
                 with st.expander("🔍 Dettaglio singolo deposito"):
                     dep_ass = st.selectbox(
@@ -1151,7 +1151,7 @@ with tab2:
                         yaxis=dict(title="Persone",
                                    gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
                     )
-                    st.plotly_chart(fig_dep_ass, use_container_width=True)
+                    st.plotly_chart(fig_dep_ass, use_container_width=True, key="pc_11")
 
             except Exception as e:
                 st.warning(f"⚠️ Errore assenze: {e}")
@@ -1175,7 +1175,7 @@ with tab2:
                     colorbar=dict(title="Gap")
                 ))
                 fig_heat2.update_layout(height=max(320, len(pivot_gap) * 40), **PLOTLY_TEMPLATE)
-                st.plotly_chart(fig_heat2, use_container_width=True)
+                st.plotly_chart(fig_heat2, use_container_width=True, key="pc_12")
 
             st.markdown("---")
             st.markdown("#### <i class='fas fa-calculator'></i> Statistiche Descrittive", unsafe_allow_html=True)
@@ -1292,7 +1292,7 @@ with tab3:
                     zerolinecolor="rgba(96,165,250,0.3)",
                 ),
             )
-            st.plotly_chart(fig_tc, use_container_width=True)
+            st.plotly_chart(fig_tc, use_container_width=True, key="pc_13")
 
             # ---- ESPLORA CODICI TURNO PER DEPOSITO ----
             st.markdown("---")
@@ -1421,7 +1421,7 @@ with tab3:
                 legend=dict(font=dict(color="#cbd5e1")),
                 margin=dict(l=20, r=20, t=20, b=20)
             )
-            st.plotly_chart(fig_pie_tc, use_container_width=True)
+            st.plotly_chart(fig_pie_tc, use_container_width=True, key="pc_14")
 
             # ---- turni per tipo giorno (cumulativo per deposito) ----
             st.markdown("---")
@@ -1548,7 +1548,7 @@ with tab3:
                             for cat in cat_order if totale_cat[cat] > 0
                         ]
                     )
-                    st.plotly_chart(fig_daytype, use_container_width=True)
+                    st.plotly_chart(fig_daytype, use_container_width=True, key="pc_15")
 
                     # KPI veloci sotto il grafico
                     k1, k2, k3 = st.columns(3)
@@ -1581,7 +1581,7 @@ with tab4:
         ))
         fig_dep.add_vline(x=0, line_width=3, line_color="#60a5fa")
         fig_dep.update_layout(height=max(400, len(by_deposito) * 35), showlegend=False, **PLOTLY_TEMPLATE)
-        st.plotly_chart(fig_dep, use_container_width=True)
+        st.plotly_chart(fig_dep, use_container_width=True, key="pc_16")
 
         st.markdown("---")
         st.markdown("#### <i class='fas fa-chart-radar'></i> Comparazione Multi-Dimensionale", unsafe_allow_html=True)
@@ -1610,7 +1610,7 @@ with tab4:
             ),
             height=500, paper_bgcolor='rgba(15,23,42,0.5)', font={'color': '#cbd5e1'}
         )
-        st.plotly_chart(fig_radar, use_container_width=True)
+        st.plotly_chart(fig_radar, use_container_width=True, key="pc_17")
 
         st.markdown("---")
         st.markdown("#### <i class='fas fa-table'></i> Tabella Dettagliata", unsafe_allow_html=True)
