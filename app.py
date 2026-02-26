@@ -415,24 +415,20 @@ def load_depositi_stats() -> pd.DataFrame:
 @st.cache_data(ttl=600)
 def load_turni_calendario() -> pd.DataFrame:
     """
-    Conta i turni per deposito per ogni giorno del calendario,
-    rispettando la validità (Lu-Ve / Sa / Do) e il range dal/al.
+    Legge i turni giornalieri già espansi dalla tabella turni_giornalieri.
+    Questa tabella è stata costruita incrociando turni.valid con calendar.daytype
+    e rispetta già il range dal/al.
 
-    Schema reale:
-      turni   → id, valid (Lu-Ve|Sa|Do), codice_turno, deposito, dal, al
-      calendar → data (date), daytype (testo uguale a valid)
+    Schema: turni_giornalieri → id, data, codice_turno, deposito
     """
     query = """
         SELECT
-            c.data          AS giorno,
-            t.deposito,
-            COUNT(t.id)     AS turni
-        FROM turni t
-        JOIN calendar c
-          ON c.data BETWEEN t.dal AND t.al
-         AND c.daytype = t.valid
-        GROUP BY c.data, t.deposito
-        ORDER BY c.data, t.deposito;
+            tg.data       AS giorno,
+            tg.deposito,
+            COUNT(tg.id)  AS turni
+        FROM turni_giornalieri tg
+        GROUP BY tg.data, tg.deposito
+        ORDER BY tg.data, tg.deposito;
     """
     return pd.read_sql(query, conn)
 
