@@ -933,26 +933,42 @@ with tab1:
                 hovertemplate="<b>Assenze storiche</b><br>%{x|%d/%m/%Y}: <b>%{y:.0f}</b><extra></extra>"
             ), row=1, col=1)
 
-            # BARRA 4 — Buffer (verde) o Deficit già incluso nel gap bar
+            # BARRA 4 — Buffer (verde >=0) / Deficit (rosso <0) — usa gap direttamente
+            buf_colors = [
+                "rgba(34,197,94,0.85)" if g >= 0 else "rgba(220,38,38,0.90)"
+                for g in cop["gap"]
+            ]
             fig_cop.add_trace(go.Bar(
-                x=cop["giorno"], y=cop["buffer"],
-                name="Buffer disponibile",
-                marker_color=[f"rgba(34,197,94,0.85)" for _ in cop["buffer"]],
-                hovertemplate="<b>Buffer</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+                x=cop["giorno"],
+                y=cop["gap"],
+                name="Buffer / Deficit",
+                marker=dict(
+                    color=buf_colors,
+                    line=dict(width=0.8, color="rgba(255,255,255,0.15)")
+                ),
+                text=[f"<b>{int(g)}</b>" if g < 0 else "" for g in cop["gap"]],
+                textposition="outside",
+                textfont=dict(size=11, color="#fca5a5"),
+                hovertemplate=(
+                    "<b>%{x|%d/%m/%Y}</b><br>"
+                    "Buffer/Deficit: <b>%{y}</b><br>"
+                    "<i>🟢 positivo = margine libero · 🔴 negativo = DEFICIT</i>"
+                    "<extra></extra>"
+                )
             ), row=1, col=1)
 
-            # LINEA — Persone in forza totali (orizzonte massimo)
+            # LINEA — Persone in forza totali
             fig_cop.add_trace(go.Scatter(
                 x=cop["giorno"], y=cop["persone_in_forza"],
-                name="👥 Persone in forza",
+                name="Persone in forza",
                 mode="lines",
-                line=dict(color="#ffffff", width=2.5, dash="dot"),
+                line=dict(color="#94a3b8", width=2, dash="dot"),
                 hovertemplate="<b>Persone in forza</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
             ), row=1, col=1)
 
-            # RIGA 2 — Gap / Buffer bar colorata
+            # RIGA 2 — Gap ripetuto con etichette e colori chiari
             gap_colors = [
-                "#22c55e" if g >= 0 else "#dc2626"
+                "rgba(34,197,94,0.85)" if g >= 0 else "rgba(220,38,38,0.90)"
                 for g in cop["gap"]
             ]
             fig_cop.add_trace(go.Bar(
@@ -960,11 +976,14 @@ with tab1:
                 name="Gap",
                 marker=dict(color=gap_colors,
                             line=dict(width=0.5, color="rgba(255,255,255,0.1)")),
+                text=[f"<b>{int(g)}</b>" for g in cop["gap"]],
+                textposition="outside",
+                textfont=dict(size=9, color="#cbd5e1"),
                 showlegend=False,
                 hovertemplate=(
                     "<b>%{x|%d/%m/%Y}</b><br>"
                     "Gap: <b>%{y}</b><br>"
-                    "<i>positivo = buffer · negativo = DEFICIT</i>"
+                    "<i>🟢 buffer · 🔴 DEFICIT</i>"
                     "<extra></extra>"
                 )
             ), row=2, col=1)
