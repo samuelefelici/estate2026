@@ -1003,6 +1003,9 @@ with tab3:
                 barmode=bmode,
                 height=550,
                 hovermode="x unified",
+                plot_bgcolor="rgba(15, 23, 42, 0.8)",
+                paper_bgcolor="rgba(15, 23, 42, 0.5)",
+                font=dict(color="#cbd5e1", family="Arial, sans-serif"),
                 legend=dict(
                     orientation="h",
                     yanchor="bottom", y=1.02,
@@ -1015,13 +1018,14 @@ with tab3:
                     tickangle=-45,
                     gridcolor="rgba(96,165,250,0.1)",
                     linecolor="rgba(96,165,250,0.3)",
+                    zerolinecolor="rgba(96,165,250,0.3)",
                 ),
                 yaxis=dict(
                     title="Turni Richiesti",
                     gridcolor="rgba(96,165,250,0.1)",
                     linecolor="rgba(96,165,250,0.3)",
+                    zerolinecolor="rgba(96,165,250,0.3)",
                 ),
-                **PLOTLY_TEMPLATE
             )
             st.plotly_chart(fig_tc, use_container_width=True)
 
