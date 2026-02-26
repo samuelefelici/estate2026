@@ -1071,9 +1071,10 @@ with tab3:
 
             # ---- turni per tipo giorno (cumulativo per deposito) ----
             st.markdown("---")
-            st.markdown("#### <i class='fas fa-calendar-week'></i> Turni per Tipo Giorno — Cumulativo per Deposito", unsafe_allow_html=True)
+            st.markdown("#### <i class='fas fa-calendar-week'></i> Turni per Giorno — Lu-Ve / Sabato / Domenica", unsafe_allow_html=True)
             st.markdown(
-                "<p style='color:#93c5fd;font-size:0.9rem;'>Le barre si sommano man mano che aggiungi depositi dal filtro qui sopra.</p>",
+                "<p style='color:#93c5fd;font-size:0.9rem;'>Turni attivi in un singolo giorno per ogni tipo. "
+                "Le barre si sommano man mano che aggiungi depositi dal filtro in alto.</p>",
                 unsafe_allow_html=True
             )
 
@@ -1105,20 +1106,29 @@ with tab3:
                     )
                     df_tc_daytype["categoria"] = df_tc_daytype["daytype"].apply(daytype_to_categoria)
 
-                    # Aggrega: per ogni deposito + categoria, somma i turni
-                    agg_daytype = (
-                        df_tc_daytype.groupby(["deposito", "categoria"])["turni"]
-                        .sum().reset_index()
+                    # Per ogni deposito + categoria prendi UN giorno rappresentativo
+                    # (tutti i Lu-Ve hanno gli stessi turni, idem Sa e Do)
+                    # → prendi il primo giorno disponibile per categoria
+                    cat_order = ["Lu-Ve", "Sabato", "Domenica"]
+
+                    primo_giorno_per_cat = (
+                        df_tc_daytype.groupby("categoria")["giorno"].min().to_dict()
                     )
 
+                    agg_daytype_list = []
+                    for cat, primo_gg in primo_giorno_per_cat.items():
+                        df_giorno = df_tc_daytype[df_tc_daytype["giorno"] == primo_gg][["deposito","turni","categoria"]]
+                        agg_daytype_list.append(df_giorno)
+
+                    agg_daytype = pd.concat(agg_daytype_list, ignore_index=True) if agg_daytype_list else pd.DataFrame()
+
                     # Ordine fisso categorie
-                    cat_order = ["Lu-Ve", "Sabato", "Domenica"]
                     agg_daytype["categoria"] = pd.Categorical(
                         agg_daytype["categoria"], categories=cat_order, ordered=True
                     )
                     agg_daytype = agg_daytype.sort_values(["categoria", "deposito"])
 
-                    # Totali cumulativi per categoria (tutti i depositi selezionati)
+                    # Totali per categoria (somma depositi in quel singolo giorno)
                     totale_cat = agg_daytype.groupby("categoria")["turni"].sum().reindex(cat_order, fill_value=0)
 
                     fig_daytype = go.Figure()
@@ -1189,11 +1199,11 @@ with tab3:
                     # KPI veloci sotto il grafico
                     k1, k2, k3 = st.columns(3)
                     with k1:
-                        st.metric("📅 Lu-Ve — Totale turni",  f"{int(totale_cat.get('Lu-Ve', 0)):,}")
+                        st.metric("📅 Turni/giorno Lu-Ve",   f"{int(totale_cat.get('Lu-Ve', 0)):,}")
                     with k2:
-                        st.metric("📅 Sabato — Totale turni", f"{int(totale_cat.get('Sabato', 0)):,}")
+                        st.metric("📅 Turni/giorno Sabato",  f"{int(totale_cat.get('Sabato', 0)):,}")
                     with k3:
-                        st.metric("📅 Domenica — Totale turni", f"{int(totale_cat.get('Domenica', 0)):,}")
+                        st.metric("📅 Turni/giorno Domenica",f"{int(totale_cat.get('Domenica', 0)):,}")
 
                 except Exception as e:
                     st.warning(f"⚠️ Impossibile caricare analisi per tipo giorno: {e}")
