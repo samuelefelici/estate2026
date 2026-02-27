@@ -29,20 +29,20 @@ st.set_page_config(
 # MAPPA COLORI DEPOSITI
 # --------------------------------------------------
 COLORI_DEPOSITI = {
-    "ancona":                     "#22c55e",   # verde
-    "polverigi":                  "#166534",   # verde scuro
-    "marina":                     "#ec4899",   # fucsia
-    "marina di montemarciano":    "#ec4899",   # fucsia
-    "filottrano":                 "#4ade80",   # verde chiaro
-    "jesi":                       "#f97316",   # arancione
-    "osimo":                      "#eab308",   # giallo
-    "castelfidardo":              "#38bdf8",   # azzurro
-    "castelfdardo":               "#38bdf8",   # typo fallback
-    "ostra":                      "#ef4444",   # rosso
-    "belvedere ostrense":         "#94a3b8",   # grigio
-    "belvedereostrense":          "#94a3b8",   # fallback senza spazio
-    "depbelvede":                 "#94a3b8",   # alias DB
-    "moie":                       "#a78bfa",   # viola
+    "ancona":                     "#22c55e",
+    "polverigi":                  "#166534",
+    "marina":                     "#ec4899",
+    "marina di montemarciano":    "#ec4899",
+    "filottrano":                 "#4ade80",
+    "jesi":                       "#f97316",
+    "osimo":                      "#eab308",
+    "castelfidardo":              "#38bdf8",
+    "castelfdardo":               "#38bdf8",
+    "ostra":                      "#ef4444",
+    "belvedere ostrense":         "#94a3b8",
+    "belvedereostrense":          "#94a3b8",
+    "depbelvede":                 "#94a3b8",
+    "moie":                       "#a78bfa",
 }
 
 def get_colore_deposito(dep: str) -> str:
@@ -367,16 +367,11 @@ PLOTLY_TEMPLATE = {
 # CONNESSIONE DATABASE
 # --------------------------------------------------
 def get_conn():
-    """
-    Restituisce sempre una connessione valida.
-    Se la connessione cached è chiusa o rotta, la rinnova.
-    """
     if "db_conn" not in st.session_state or st.session_state["db_conn"].closed:
         st.session_state["db_conn"] = psycopg2.connect(
             st.secrets["DATABASE_URL"], sslmode="require"
         )
     else:
-        # Testa la connessione con un ping leggero
         try:
             c = st.session_state["db_conn"].cursor()
             c.execute("SELECT 1;")
@@ -405,7 +400,6 @@ except Exception as e:
 # --------------------------------------------------
 @st.cache_data(ttl=600)
 def load_staffing() -> pd.DataFrame:
-    """Vista staffing giornaliera per deposito."""
     query = """
         SELECT
             giorno, tipo_giorno, deposito, totale_autisti,
@@ -420,7 +414,6 @@ def load_staffing() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_depositi_stats() -> pd.DataFrame:
-    """Organico medio per deposito."""
     query = """
         SELECT deposito, giorni_attivi, dipendenti_medi_giorno
         FROM v_depositi_organico_medio
@@ -431,13 +424,6 @@ def load_depositi_stats() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_turni_calendario() -> pd.DataFrame:
-    """
-    Legge i turni giornalieri già espansi dalla tabella turni_giornalieri.
-    Questa tabella è stata costruita incrociando turni.valid con calendar.daytype
-    e rispetta già il range dal/al.
-
-    Schema: turni_giornalieri → id, data, codice_turno, deposito
-    """
     query = """
         SELECT
             tg.data       AS giorno,
@@ -452,16 +438,6 @@ def load_turni_calendario() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_copertura() -> pd.DataFrame:
-    """
-    Formula:
-      persone_in_forza    = COUNT DISTINCT matricola (roster)
-      assenze_nominali    = COUNT(*) WHERE turno IS NOT NULL AND turno <> ''
-      assenze_statistiche = tabella assenze (medie storiche per deposito+daytype)
-      turni_richiesti     = da turni_giornalieri
-      buffer              = persone_in_forza - turni_richiesti
-                            - assenze_nominali - assenze_statistiche
-      gap negativo (< 0) = allarme: non bastano le persone per coprire tutto
-    """
     query = """
         WITH
         forza AS (
@@ -502,7 +478,6 @@ def load_copertura() -> pd.DataFrame:
             COALESCE(t.turni_richiesti,    0)       AS turni_richiesti,
             f.assenze_nominali,
             COALESCE(a.assenze_statistiche, 0)      AS assenze_statistiche,
-            -- buffer positivo o gap negativo
             f.persone_in_forza
             - COALESCE(t.turni_richiesti,    0)
             - f.assenze_nominali
@@ -520,7 +495,6 @@ try:
     df_raw["giorno"] = pd.to_datetime(df_raw["giorno"])
     df_depositi = load_depositi_stats()
 
-    # escludi deposito tecnico
     df_raw      = df_raw[df_raw["deposito"] != "depbelvede"].copy()
     df_depositi = df_depositi[df_depositi["deposito"] != "depbelvede"].copy()
 except Exception as e:
@@ -658,7 +632,6 @@ df_filtered = df_filtered[
 # --- filtro df_copertura ---
 if len(df_copertura) > 0:
     if ferie_10:
-        # +5 ferie ad Ancona, +5 distribuite proporzionalmente agli altri depositi
         df_cop = df_copertura.copy()
         df_cop["deposito_norm"] = df_cop["deposito"].str.strip().str.lower()
         df_cop["ferie_extra"] = 0.0
@@ -670,7 +643,6 @@ if len(df_copertura) > 0:
             sum_p = elig.groupby("giorno")["peso"].transform("sum")
             elig["quota"] = np.where(sum_p > 0, 5.0 * elig["peso"] / sum_p, 0.0)
             df_cop.loc[elig.index, "ferie_extra"] += elig["quota"].values
-        # Le ferie extra aumentano le assenze nominali e riducono il buffer/gap
         df_cop["assenze_nominali"]    = df_cop["assenze_nominali"] + df_cop["ferie_extra"]
         df_cop["gap"]                 = (
             df_cop["persone_in_forza"]
@@ -696,7 +668,7 @@ if len(df_copertura) > 0:
 else:
     df_copertura_filtered = pd.DataFrame()
 
-# --- filtro turni calendario sulle stesse date/depositi ---
+# --- filtro turni calendario ---
 if turni_cal_ok and len(df_turni_cal) > 0:
     if len(date_range) == 2:
         df_tc_filtered = df_turni_cal[
@@ -734,34 +706,55 @@ st.markdown("---")
 
 
 # --------------------------------------------------
-# KPI CARDS
+# ██ KPI CARDS — MODIFICATO ██
 # --------------------------------------------------
 st.markdown("### <i class='fas fa-chart-line'></i> KEY PERFORMANCE INDICATORS", unsafe_allow_html=True)
 
 if len(df_filtered) > 0:
-    giorni_analizzati         = df_filtered["giorno"].nunique()
     totale_dipendenti         = df_depositi[df_depositi["deposito"].isin(deposito_sel)]["dipendenti_medi_giorno"].sum()
-    disponibilita_media_giorno = df_filtered.groupby("giorno")["disponibili_netti"].sum().mean()
     gap_medio_giorno          = df_filtered.groupby("giorno")["gap"].sum().mean()
     media_turni_giorno        = df_filtered.groupby("giorno")["turni_richiesti"].sum().mean()
     gap_pct_medio             = (gap_medio_giorno / media_turni_giorno * 100) if media_turni_giorno > 0 else 0
     gap_per_giorno            = df_filtered.groupby("giorno")["gap"].sum()
+    giorni_analizzati         = df_filtered["giorno"].nunique()
     giorni_critici_count      = (gap_per_giorno < soglia_gap).sum()
     pct_critici               = (giorni_critici_count / giorni_analizzati * 100) if giorni_analizzati > 0 else 0
     totale_assenze            = df_filtered["assenze_previste"].sum()
     tasso_assenze             = (totale_assenze / (totale_dipendenti * giorni_analizzati) * 100) \
                                 if (totale_dipendenti > 0 and giorni_analizzati > 0) else 0
 
-    kpi1, kpi2, kpi3, kpi4, kpi5, kpi6 = st.columns(6)
-    with kpi1: st.metric("👤 Autisti",          f"{int(totale_dipendenti):,}")
-    with kpi2: st.metric("📅 Giorni",           f"{giorni_analizzati}")
-    with kpi3: st.metric("📊 Disponibili/Gg",   f"{int(disponibilita_media_giorno):,}")
-    with kpi4: st.metric("⚖️ Gap Medio",        f"{int(gap_medio_giorno):,}",
-                         delta=f"{gap_pct_medio:.1f}%",
-                         delta_color="normal" if gap_medio_giorno >= 0 else "inverse")
-    with kpi5: st.metric("🚨 Giorni Critici",   f"{giorni_critici_count}/{giorni_analizzati}",
-                         delta=f"{pct_critici:.0f}%", delta_color="inverse")
-    with kpi6: st.metric("🏥 Tasso Assenze",    f"{tasso_assenze:.1f}%")
+    # Totale turni Lu-Ve: somma turni_richiesti nei giorni feriali del periodo filtrato
+    turni_luv_totale = df_filtered[
+        df_filtered["tipo_giorno"].str.lower().isin(
+            ['lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi']
+        )
+    ].groupby("giorno")["turni_richiesti"].sum().mean()
+    turni_luv_totale = turni_luv_totale if not np.isnan(turni_luv_totale) else 0
+
+    # 4 KPI: Autisti · Totale Turni Lu-Ve · Gap Medio · Giorni Critici
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    with kpi1:
+        st.metric("👤 Autisti", f"{int(totale_dipendenti):,}")
+    with kpi2:
+        st.metric(
+            "🚌 Turni/giorno Lu-Ve",
+            f"{int(turni_luv_totale):,}",
+            help="Media dei turni richiesti in un giorno feriale (Lu-Ve) nel periodo selezionato"
+        )
+    with kpi3:
+        st.metric(
+            "⚖️ Gap Medio/giorno",
+            f"{int(gap_medio_giorno):,}",
+            delta=f"{gap_pct_medio:.1f}%",
+            delta_color="normal" if gap_medio_giorno >= 0 else "inverse"
+        )
+    with kpi4:
+        st.metric(
+            "🚨 Giorni Critici",
+            f"{giorni_critici_count}/{giorni_analizzati}",
+            delta=f"{pct_critici:.0f}%",
+            delta_color="inverse"
+        )
 
 st.markdown("---")
 
@@ -812,7 +805,7 @@ if show_insights and len(df_filtered) > 0:
 
 
 # --------------------------------------------------
-# AGGREGATI PER DEPOSITO (usati in più tab)
+# AGGREGATI PER DEPOSITO
 # --------------------------------------------------
 if len(df_filtered) > 0:
     by_deposito = df_filtered.groupby("deposito").agg(
@@ -861,7 +854,6 @@ with tab1:
         )
 
         if len(df_copertura_filtered) > 0:
-            # ── Aggrega per giorno (tutti i depositi selezionati) ──────────
             cop = df_copertura_filtered.groupby("giorno").agg(
                 persone_in_forza    = ("persone_in_forza",     "sum"),
                 turni_richiesti     = ("turni_richiesti",      "sum"),
@@ -871,11 +863,9 @@ with tab1:
             ).reset_index()
 
             cop["totale_assenze"] = cop["assenze_nominali"] + cop["assenze_statistiche"]
-            # Buffer = gap quando positivo; gap negativo = deficit
             cop["buffer"]  = cop["gap"].clip(lower=0)
             cop["deficit"] = cop["gap"].clip(upper=0).abs()
 
-            # KPI rapidi sopra il grafico
             giorni_ok      = int((cop["gap"] >= 0).sum())
             giorni_allarme = int((cop["gap"] <  0).sum())
             gap_medio      = cop["gap"].mean()
@@ -883,21 +873,16 @@ with tab1:
 
             kc1, kc2, kc3, kc4 = st.columns(4)
             with kc1:
-                st.metric("👥 Persone in forza (media/gg)",
-                          f"{cop['persone_in_forza'].mean():.0f}")
+                st.metric("👥 Persone in forza (media/gg)", f"{cop['persone_in_forza'].mean():.0f}")
             with kc2:
-                st.metric("✅ Giorni in copertura", f"{giorni_ok}",
-                          delta=None)
+                st.metric("✅ Giorni in copertura", f"{giorni_ok}")
             with kc3:
-                delta_col = "inverse" if giorni_allarme > 0 else "normal"
                 st.metric("🚨 Giorni in deficit", f"{giorni_allarme}")
             with kc4:
-                st.metric("📉 Gap medio/giorno", f"{gap_medio:.1f}",
-                          delta=f"min: {gap_min:.0f}")
+                st.metric("📉 Gap medio/giorno", f"{gap_medio:.1f}", delta=f"min: {gap_min:.0f}")
 
             st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-            # ── Grafico principale: barre impilate + linea persone ─────────
             fig_cop = make_subplots(
                 rows=2, cols=1,
                 row_heights=[0.70, 0.30],
@@ -909,7 +894,6 @@ with tab1:
                 ),
             )
 
-            # BARRA 1 — Turni richiesti (rosso scuro)
             fig_cop.add_trace(go.Bar(
                 x=cop["giorno"], y=cop["turni_richiesti"],
                 name="Turni da coprire",
@@ -917,7 +901,6 @@ with tab1:
                 hovertemplate="<b>Turni da coprire</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
             ), row=1, col=1)
 
-            # BARRA 2 — Assenze nominali roster (blu)
             fig_cop.add_trace(go.Bar(
                 x=cop["giorno"], y=cop["assenze_nominali"],
                 name="Assenze roster (FP / R / PS …)",
@@ -925,7 +908,6 @@ with tab1:
                 hovertemplate="<b>Assenze roster</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
             ), row=1, col=1)
 
-            # BARRA 3 — Assenze statistiche (arancio)
             fig_cop.add_trace(go.Bar(
                 x=cop["giorno"], y=cop["assenze_statistiche"],
                 name="Assenze storiche (infort./malattie…)",
@@ -933,7 +915,6 @@ with tab1:
                 hovertemplate="<b>Assenze storiche</b><br>%{x|%d/%m/%Y}: <b>%{y:.0f}</b><extra></extra>"
             ), row=1, col=1)
 
-            # BARRA 4 — Buffer (verde >=0) / Deficit (rosso <0) — usa gap direttamente
             buf_colors = [
                 "rgba(34,197,94,0.85)" if g >= 0 else "rgba(220,38,38,0.90)"
                 for g in cop["gap"]
@@ -942,10 +923,7 @@ with tab1:
                 x=cop["giorno"],
                 y=cop["gap"],
                 name="Buffer / Deficit",
-                marker=dict(
-                    color=buf_colors,
-                    line=dict(width=0.8, color="rgba(255,255,255,0.15)")
-                ),
+                marker=dict(color=buf_colors, line=dict(width=0.8, color="rgba(255,255,255,0.15)")),
                 text=[f"<b>{int(g)}</b>" if g < 0 else "" for g in cop["gap"]],
                 textposition="outside",
                 textfont=dict(size=11, color="#fca5a5"),
@@ -957,7 +935,6 @@ with tab1:
                 )
             ), row=1, col=1)
 
-            # LINEA — Persone in forza totali
             fig_cop.add_trace(go.Scatter(
                 x=cop["giorno"], y=cop["persone_in_forza"],
                 name="Persone in forza",
@@ -966,7 +943,6 @@ with tab1:
                 hovertemplate="<b>Persone in forza</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
             ), row=1, col=1)
 
-            # RIGA 2 — Gap ripetuto con etichette e colori chiari
             gap_colors = [
                 "rgba(34,197,94,0.85)" if g >= 0 else "rgba(220,38,38,0.90)"
                 for g in cop["gap"]
@@ -974,8 +950,7 @@ with tab1:
             fig_cop.add_trace(go.Bar(
                 x=cop["giorno"], y=cop["gap"],
                 name="Gap",
-                marker=dict(color=gap_colors,
-                            line=dict(width=0.5, color="rgba(255,255,255,0.1)")),
+                marker=dict(color=gap_colors, line=dict(width=0.5, color="rgba(255,255,255,0.1)")),
                 text=[f"<b>{int(g)}</b>" for g in cop["gap"]],
                 textposition="outside",
                 textfont=dict(size=9, color="#cbd5e1"),
@@ -993,8 +968,7 @@ with tab1:
                               row=2, col=1)
             if soglia_gap < 0:
                 fig_cop.add_hline(
-                    y=soglia_gap, line_dash="dash", line_color="#dc2626",
-                    line_width=2,
+                    y=soglia_gap, line_dash="dash", line_color="#dc2626", line_width=2,
                     annotation_text=f"Soglia critica ({soglia_gap})",
                     annotation_font=dict(color="#dc2626", size=11),
                     annotation_position="top left",
@@ -1033,23 +1007,17 @@ with tab1:
 
             st.plotly_chart(fig_cop, use_container_width=True, key="pc_main_cop")
 
-            # ── Legenda visiva (card colorate) ─────────────────────────────
             c1, c2, c3, c4, c5 = st.columns(5)
             cards = [
-                (c1, "#64748b", "rgba(100,116,139,0.12)",
-                 "▪ Turni da coprire",
+                (c1, "#64748b", "rgba(100,116,139,0.12)", "▪ Turni da coprire",
                  "Turni che devono essere garantiti ogni giorno"),
-                (c2, "#475569", "rgba(71,85,105,0.15)",
-                 "▪ Assenze roster",
+                (c2, "#475569", "rgba(71,85,105,0.15)", "▪ Assenze roster",
                  "FP, R, PS, AP, PADm, NF e tutti i codici turno assegnati"),
-                (c3, "#334155", "rgba(51,65,85,0.20)",
-                 "▪ Assenze storiche",
+                (c3, "#334155", "rgba(51,65,85,0.20)", "▪ Assenze storiche",
                  "Infortuni, malattie, L.104, permessi (medie anni precedenti)"),
-                (c4, "#22c55e", "rgba(34,197,94,0.15)",
-                 "🟢 Buffer",
+                (c4, "#22c55e", "rgba(34,197,94,0.15)", "🟢 Buffer",
                  "Verde = persone libere · Rosso = DEFICIT"),
-                (c5, "#94a3b8", "rgba(148,163,184,0.05)",
-                 "— Persone in forza",
+                (c5, "#94a3b8", "rgba(148,163,184,0.05)", "— Persone in forza",
                  "Linea tratteggiata = organico totale del giorno"),
             ]
             for col, border, bg, title, desc in cards:
@@ -1057,8 +1025,7 @@ with tab1:
                     st.markdown(
                         f"<div style='background:{bg};border-left:4px solid {border};"
                         f"border-radius:8px;padding:10px 12px;min-height:72px;'>"
-                        f"<span style='color:#e2e8f0;font-size:0.78rem;"
-                        f"font-weight:700;'>{title}</span><br>"
+                        f"<span style='color:#e2e8f0;font-size:0.78rem;font-weight:700;'>{title}</span><br>"
                         f"<span style='color:#94a3b8;font-size:0.75rem;'>{desc}</span>"
                         f"</div>",
                         unsafe_allow_html=True
@@ -1067,7 +1034,6 @@ with tab1:
         else:
             st.info("Dati copertura non disponibili per i filtri selezionati.")
 
-        # ── Gauge e pie in expander in fondo, fuori dai piedi ─────────────────
         with st.expander("📊 Statistiche aggiuntive — Gauge Gap % e Distribuzione Assenze"):
             eg1, eg2 = st.columns(2)
             with eg1:
@@ -1088,8 +1054,10 @@ with tab1:
                             {'range': [  0,  10], 'color': 'rgba(34,197,94,0.3)'},
                             {'range': [ 10,  20], 'color': 'rgba(16,185,129,0.3)'},
                         ],
-                        'threshold': {'line': {'color': "#ef4444", 'width': 4}, 'thickness': 0.75,
-                                      'value': (soglia_gap / media_turni_giorno * 100) if media_turni_giorno > 0 else 0}
+                        'threshold': {
+                            'line': {'color': "#ef4444", 'width': 4}, 'thickness': 0.75,
+                            'value': (soglia_gap / media_turni_giorno * 100) if media_turni_giorno > 0 else 0
+                        }
                     }
                 ))
                 fig_gauge.update_layout(height=280, paper_bgcolor='rgba(15,23,42,0.5)',
@@ -1136,65 +1104,154 @@ with tab1:
 
 
 # ══════════════════════════════════════════════════
-# TAB 2 — ANALISI & ASSENZE (merged Trend + Deep Dive)
+# TAB 2 — ANALISI & ASSENZE
 # ══════════════════════════════════════════════════
 with tab2:
     if len(df_filtered) == 0:
         st.info("Nessun dato per i filtri selezionati.")
     else:
-        # Sotto-tab interni
-        st2_a, st2_b, st2_c, st2_d = st.tabs([
+        # ██ Rimosso sotto-tab "Distribuzione Gap" — ora 3 sotto-tab ██
+        st2_a, st2_b, st2_c = st.tabs([
             "📉 Gap & Waterfall",
             "🏖️ Ferie & Riposi",
             "🤒 Assenze Complete",
-            "📦 Distribuzione Gap",
         ])
 
         # ─────────────────────────────────────────────
-        # SOTTO-TAB A — GAP & WATERFALL
+        # SOTTO-TAB A — GAP & WATERFALL  ← MODIFICATO
         # ─────────────────────────────────────────────
         with st2_a:
-            col_wf, col_box = st.columns([1, 1])
 
-            with col_wf:
-                st.markdown("#### <i class='fas fa-water'></i> Composizione Gap Medio Giornaliero", unsafe_allow_html=True)
-                autisti_medio = df_filtered.groupby("giorno")["totale_autisti"].sum().mean()
-                assenze_medie = df_filtered.groupby("giorno")["assenze_previste"].sum().mean()
-                turni_medi    = df_filtered.groupby("giorno")["turni_richiesti"].sum().mean()
-                gap_medio_wf  = df_filtered.groupby("giorno")["gap"].sum().mean()
+            # ██ WATERFALL — logica più chiara con subtotale "Disponibili Netti" ██
+            st.markdown("#### <i class='fas fa-water'></i> Composizione Gap Medio Giornaliero", unsafe_allow_html=True)
+            st.markdown(
+                "<p style='color:#93c5fd;font-size:0.9rem;'>"
+                "Il grafico mostra <b>come si arriva al gap partendo dagli autisti</b>: "
+                "prima si sottraggono le assenze previste → si ottengono i <b>Disponibili Netti</b>, "
+                "poi si sottraggono i turni da coprire → si ottiene il <b>Gap/Buffer</b> finale.</p>",
+                unsafe_allow_html=True
+            )
 
-                fig_wf = go.Figure(go.Waterfall(
-                    orientation="v",
-                    measure=["absolute", "relative", "relative", "total"],
-                    x=["Autisti Totali", "− Assenze", "− Turni Richiesti", "= Gap"],
-                    y=[autisti_medio, -assenze_medie, -(turni_medi - assenze_medie), gap_medio_wf],
-                    text=[f"{autisti_medio:.0f}", f"−{assenze_medie:.0f}",
-                          f"−{(turni_medi - assenze_medie):.0f}", f"{gap_medio_wf:.0f}"],
-                    textposition="outside",
-                    connector={"line": {"color": "#60a5fa"}},
-                    increasing={"marker": {"color": "#22c55e"}},
-                    decreasing={"marker": {"color": "#ef4444"}},
-                    totals={"marker": {"color": "#3b82f6"}},
-                ))
-                fig_wf.update_layout(height=420, showlegend=False, **PLOTLY_TEMPLATE)
-                st.plotly_chart(fig_wf, use_container_width=True, key="pc_5")
+            autisti_medio      = df_filtered.groupby("giorno")["totale_autisti"].sum().mean()
+            assenze_medie      = df_filtered.groupby("giorno")["assenze_previste"].sum().mean()
+            turni_medi         = df_filtered.groupby("giorno")["turni_richiesti"].sum().mean()
+            disponibili_medi   = autisti_medio - assenze_medie          # subtotale intermedio
+            gap_medio_wf       = disponibili_medi - turni_medi           # = gap finale
 
-            with col_box:
-                st.markdown("#### <i class='fas fa-box-open'></i> Distribuzione Gap per Deposito", unsafe_allow_html=True)
-                fig_box = go.Figure()
-                for dep in sorted(deposito_sel):
-                    dep_data = df_filtered[df_filtered["deposito"] == dep]["gap"]
-                    if len(dep_data) > 0:
-                        fig_box.add_trace(go.Box(
-                            y=dep_data, name=dep.title(),
-                            marker_color=get_colore_deposito(dep),
-                            boxmean="sd",
-                            hovertemplate=f"<b>{dep.title()}</b><br>Gap: %{{y}}<extra></extra>"
-                        ))
-                fig_box.update_layout(height=420, showlegend=False, **PLOTLY_TEMPLATE)
-                st.plotly_chart(fig_box, use_container_width=True, key="pc_6")
+            # Colore del totale finale: verde se >= 0, rosso se negativo
+            colore_gap = "#22c55e" if gap_medio_wf >= 0 else "#ef4444"
+            colore_disp = "#3b82f6"  # blu per il subtotale intermedio
+
+            fig_wf = go.Figure(go.Waterfall(
+                orientation="v",
+                measure=["absolute", "relative", "total", "relative", "total"],
+                x=[
+                    "👥 Autisti in Forza",
+                    "➖ Assenze Previste",
+                    "= Disponibili Netti",
+                    "➖ Turni da Coprire",
+                    "= Gap / Buffer",
+                ],
+                y=[autisti_medio, -assenze_medie, 0, -turni_medi, 0],
+                text=[
+                    f"<b>{autisti_medio:.0f}</b>",
+                    f"<b>−{assenze_medie:.0f}</b>",
+                    f"<b>{disponibili_medi:.0f}</b>",
+                    f"<b>−{turni_medi:.0f}</b>",
+                    f"<b>{'+'if gap_medio_wf>=0 else ''}{gap_medio_wf:.0f}</b>",
+                ],
+                textposition="outside",
+                textfont=dict(size=13, color="#e2e8f0"),
+                connector={"line": {"color": "rgba(96,165,250,0.4)", "width": 1.5, "dash": "dot"}},
+                increasing={"marker": {"color": "#22c55e", "line": {"color": "#16a34a", "width": 1}}},
+                decreasing={"marker": {"color": "#ef4444", "line": {"color": "#dc2626", "width": 1}}},
+                totals={"marker": {
+                    "color": [colore_disp, colore_gap],
+                    "line": {"color": "rgba(255,255,255,0.3)", "width": 1}
+                }},
+                hovertemplate=(
+                    "<b>%{x}</b><br>"
+                    "Valore: <b>%{y:.1f}</b> persone<br>"
+                    "<extra></extra>"
+                ),
+            ))
+
+            # Linea di riferimento a zero
+            fig_wf.add_hline(
+                y=0,
+                line_dash="dash",
+                line_color="rgba(255,255,255,0.3)",
+                line_width=1,
+            )
+
+            # Annotazione esplicativa sul gap finale
+            annotation_color = "#22c55e" if gap_medio_wf >= 0 else "#ef4444"
+            annotation_text  = (
+                f"✅ Buffer: +{gap_medio_wf:.0f}" if gap_medio_wf >= 0
+                else f"🚨 Deficit: {gap_medio_wf:.0f}"
+            )
+            fig_wf.add_annotation(
+                x="= Gap / Buffer",
+                y=gap_medio_wf + (8 if gap_medio_wf >= 0 else -8),
+                text=annotation_text,
+                showarrow=False,
+                font=dict(size=12, color=annotation_color, family="Arial Black"),
+                bgcolor="rgba(15,23,42,0.85)",
+                bordercolor=annotation_color,
+                borderwidth=1,
+                borderpad=6,
+            )
+
+            fig_wf.update_layout(
+                height=480,
+                showlegend=False,
+                plot_bgcolor="rgba(15,23,42,0.8)",
+                paper_bgcolor="rgba(15,23,42,0.5)",
+                font=dict(color="#cbd5e1", family="Arial, sans-serif"),
+                margin=dict(t=30, b=60, l=20, r=20),
+                xaxis=dict(
+                    gridcolor="rgba(96,165,250,0.08)",
+                    linecolor="rgba(96,165,250,0.2)",
+                    tickfont=dict(size=12),
+                ),
+                yaxis=dict(
+                    title="Persone (media/giorno)",
+                    gridcolor="rgba(96,165,250,0.1)",
+                    linecolor="rgba(96,165,250,0.2)",
+                    zeroline=True,
+                    zerolinecolor="rgba(255,255,255,0.25)",
+                    zerolinewidth=1.5,
+                ),
+            )
+            st.plotly_chart(fig_wf, use_container_width=True, key="pc_5")
+
+            # 3 KPI esplicativi sotto il waterfall
+            wk1, wk2, wk3 = st.columns(3)
+            with wk1:
+                st.metric(
+                    "👥 Autisti medi/giorno",
+                    f"{autisti_medio:.0f}",
+                    help="Organico medio giornaliero nei depositi selezionati"
+                )
+            with wk2:
+                st.metric(
+                    "🏥 Assenze previste/giorno",
+                    f"{assenze_medie:.0f}",
+                    delta=f"−{assenze_medie/autisti_medio*100:.1f}% dell'organico" if autisti_medio > 0 else "",
+                    delta_color="inverse",
+                    help="Media giornaliera di assenze statistiche (malattie, infortuni, L.104, permessi…)"
+                )
+            with wk3:
+                st.metric(
+                    "🚌 Turni da coprire/giorno",
+                    f"{turni_medi:.0f}",
+                    delta=f"{'✅ coperti' if gap_medio_wf >= 0 else f'🚨 deficit {gap_medio_wf:.0f}'}",
+                    delta_color="normal" if gap_medio_wf >= 0 else "inverse",
+                    help="Media giornaliera di turni richiesti dal servizio"
+                )
 
             st.markdown("---")
+            # ── TREND ASSENZE (rimasto invariato) ───────────────────────────
             st.markdown("#### <i class='fas fa-chart-line'></i> Trend Assenze per Tipologia", unsafe_allow_html=True)
             trend_df = df_filtered.groupby("giorno").agg(
                 infortuni=("infortuni", "sum"),
@@ -1357,12 +1414,12 @@ with tab2:
                 df_assenze_full = stat_daily.merge(nom_daily, on="giorno", how="left").fillna(0)
 
                 k1,k2,k3,k4,k5,k6 = st.columns(6)
-                with k1: st.metric("🤕 Infortuni",       f"{int(df_assenze_full['infortuni'].sum()):,}")
-                with k2: st.metric("🤒 Malattie",         f"{int(df_assenze_full['malattie'].sum()):,}")
-                with k3: st.metric("♿ L.104",             f"{int(df_assenze_full['legge_104'].sum()):,}")
-                with k4: st.metric("📋 PS",               f"{int(df_assenze_full['ps'].sum()):,}")
-                with k5: st.metric("⏸️ Aspettativa",     f"{int(df_assenze_full['aspettativa'].sum()):,}")
-                with k6: st.metric("🔴 Non in forza",    f"{int(df_assenze_full['non_in_forza'].sum()):,}")
+                with k1: st.metric("🤕 Infortuni",    f"{int(df_assenze_full['infortuni'].sum()):,}")
+                with k2: st.metric("🤒 Malattie",      f"{int(df_assenze_full['malattie'].sum()):,}")
+                with k3: st.metric("♿ L.104",          f"{int(df_assenze_full['legge_104'].sum()):,}")
+                with k4: st.metric("📋 PS",            f"{int(df_assenze_full['ps'].sum()):,}")
+                with k5: st.metric("⏸️ Aspettativa",  f"{int(df_assenze_full['aspettativa'].sum()):,}")
+                with k6: st.metric("🔴 Non in forza", f"{int(df_assenze_full['non_in_forza'].sum()):,}")
 
                 st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
@@ -1375,10 +1432,10 @@ with tab2:
                     ("permessi_vari",     "Permessi vari",     "#22c55e"),
                 ]
                 palette_nom = [
-                    ("ps",              "PS",                   "#f43f5e"),
-                    ("aspettativa",     "AP (Aspettativa)",     "#8b5cf6"),
+                    ("ps",              "PS",                    "#f43f5e"),
+                    ("aspettativa",     "AP (Aspettativa)",      "#8b5cf6"),
                     ("congedo_straord", "PADm (Cong. straord.)", "#0ea5e9"),
-                    ("non_in_forza",    "NF (Non in forza)",    "#64748b"),
+                    ("non_in_forza",    "NF (Non in forza)",     "#64748b"),
                 ]
 
                 fig_ass = go.Figure()
@@ -1445,37 +1502,9 @@ with tab2:
             except Exception as e:
                 st.warning(f"⚠️ Errore assenze: {e}")
 
-        # ─────────────────────────────────────────────
-        # SOTTO-TAB D — DISTRIBUZIONE GAP (box + heatmap)
-        # ─────────────────────────────────────────────
-        with st2_d:
-            st.markdown("#### <i class='fas fa-fire'></i> Heatmap Criticità Gap", unsafe_allow_html=True)
-            pivot_gap = df_filtered.pivot_table(
-                values="gap", index="deposito",
-                columns=df_filtered["giorno"].dt.strftime("%d/%m"),
-                aggfunc="sum", fill_value=0
-            )
-            if len(pivot_gap) > 0:
-                fig_heat2 = go.Figure(go.Heatmap(
-                    z=pivot_gap.values, x=pivot_gap.columns, y=pivot_gap.index,
-                    colorscale=[[0,"#7f1d1d"],[0.3,"#dc2626"],[0.45,"#fb923c"],
-                                 [0.5,"#fef3c7"],[0.55,"#86efac"],[0.7,"#22c55e"],[1,"#14532d"]],
-                    zmid=0, text=pivot_gap.values, texttemplate="%{text:.0f}",
-                    colorbar=dict(title="Gap")
-                ))
-                fig_heat2.update_layout(height=max(320, len(pivot_gap) * 40), **PLOTLY_TEMPLATE)
-                st.plotly_chart(fig_heat2, use_container_width=True, key="pc_12")
-
-            st.markdown("---")
-            st.markdown("#### <i class='fas fa-calculator'></i> Statistiche Descrittive", unsafe_allow_html=True)
-            st.dataframe(
-                df_filtered[["gap","disponibili_netti","assenze_previste","turni_richiesti"]].describe().T.round(2),
-                use_container_width=True
-            )
-
 
 # ══════════════════════════════════════════════════
-# TAB 3 — TURNI CALENDARIO  ← NUOVO
+# TAB 3 — TURNI CALENDARIO
 # ══════════════════════════════════════════════════
 with tab3:
     st.markdown("### <i class='fas fa-calendar-check'></i> Turni per Deposito — Validità Temporale",
@@ -1494,7 +1523,6 @@ with tab3:
             "in `calendar`, e che le date `dal`/`al` rientrino nel periodo selezionato."
         )
     else:
-        # ---- controlli localizzati nel tab ----
         tc_col1, tc_col2, tc_col3 = st.columns([1, 1, 2])
         with tc_col1:
             bar_mode = st.radio("Modalità barre", ["Impilate", "Affiancate"], horizontal=True)
@@ -1502,7 +1530,6 @@ with tab3:
         with tc_col2:
             show_totale = st.checkbox("Mostra linea totale", value=True)
         with tc_col3:
-            # filtro rapido depositi dentro il tab
             dep_tc = st.multiselect(
                 "Depositi visibili nel grafico",
                 options=sorted(df_tc_filtered["deposito"].unique()),
@@ -1515,7 +1542,6 @@ with tab3:
         if len(df_tc_plot) == 0:
             st.info("Nessun dato per la selezione corrente.")
         else:
-            # aggregazione per giorno + deposito
             df_tc_agg = (
                 df_tc_plot.groupby(["giorno", "deposito"])["turni"]
                 .sum().reset_index()
@@ -1540,7 +1566,6 @@ with tab3:
                     )
                 ))
 
-            # linea totale opzionale
             if show_totale:
                 totale_gg = df_tc_agg.groupby("giorno")["turni"].sum().reset_index()
                 fig_tc.add_trace(go.Scatter(
@@ -1561,41 +1586,24 @@ with tab3:
                 paper_bgcolor="rgba(15, 23, 42, 0.5)",
                 font=dict(color="#cbd5e1", family="Arial, sans-serif"),
                 legend=dict(
-                    orientation="h",
-                    yanchor="bottom", y=1.02,
-                    xanchor="right",  x=1,
-                    font=dict(size=11, color="#cbd5e1")
+                    orientation="h", yanchor="bottom", y=1.02,
+                    xanchor="right", x=1, font=dict(size=11, color="#cbd5e1")
                 ),
-                xaxis=dict(
-                    title="Data",
-                    tickformat="%d/%m",
-                    tickangle=-45,
-                    gridcolor="rgba(96,165,250,0.1)",
-                    linecolor="rgba(96,165,250,0.3)",
-                    zerolinecolor="rgba(96,165,250,0.3)",
-                ),
-                yaxis=dict(
-                    title="Turni Richiesti",
-                    gridcolor="rgba(96,165,250,0.1)",
-                    linecolor="rgba(96,165,250,0.3)",
-                    zerolinecolor="rgba(96,165,250,0.3)",
-                ),
+                xaxis=dict(title="Data", tickformat="%d/%m", tickangle=-45,
+                           gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)",
+                           zerolinecolor="rgba(96,165,250,0.3)"),
+                yaxis=dict(title="Turni Richiesti",
+                           gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)",
+                           zerolinecolor="rgba(96,165,250,0.3)"),
             )
             st.plotly_chart(fig_tc, use_container_width=True, key="pc_13")
 
-            # ---- ESPLORA CODICI TURNO PER DEPOSITO ----
             st.markdown("---")
             st.markdown("#### <i class='fas fa-search'></i> Esplora Codici Turno per Deposito", unsafe_allow_html=True)
 
-            # Carica i codici turno dalla tabella turni (con validità)
             try:
                 df_codici = pd.read_sql("""
-                    SELECT
-                        deposito,
-                        codice_turno,
-                        valid,
-                        dal,
-                        al
+                    SELECT deposito, codice_turno, valid, dal, al
                     FROM turni
                     ORDER BY deposito, valid, codice_turno;
                 """, get_conn())
@@ -1603,88 +1611,57 @@ with tab3:
                 df_codici["al"]  = pd.to_datetime(df_codici["al"]).dt.strftime("%d/%m/%Y")
 
                 depositi_con_turni = sorted(df_codici["deposito"].unique())
-
-                # Selettore deposito
                 dep_esplora = st.selectbox(
-                    "📍 Seleziona deposito",
-                    options=depositi_con_turni,
-                    format_func=lambda x: x.title(),
-                    key="dep_esplora"
+                    "📍 Seleziona deposito", options=depositi_con_turni,
+                    format_func=lambda x: x.title(), key="dep_esplora"
                 )
-
-                # Filtro tipo giorno
                 tipi_disponibili = sorted(df_codici[df_codici["deposito"] == dep_esplora]["valid"].unique())
                 tipo_sel = st.radio(
-                    "Tipo giorno",
-                    options=["Tutti"] + tipi_disponibili,
-                    horizontal=True,
-                    key="tipo_esplora"
+                    "Tipo giorno", options=["Tutti"] + tipi_disponibili,
+                    horizontal=True, key="tipo_esplora"
                 )
 
                 df_dep_codici = df_codici[df_codici["deposito"] == dep_esplora].copy()
                 if tipo_sel != "Tutti":
                     df_dep_codici = df_dep_codici[df_dep_codici["valid"] == tipo_sel]
 
-                # KPI rapidi
                 k1, k2, k3 = st.columns(3)
-                with k1:
-                    st.metric("🔢 Codici turno", len(df_dep_codici))
-                with k2:
-                    st.metric("📋 Tipi giorno", df_dep_codici["valid"].nunique())
+                with k1: st.metric("🔢 Codici turno", len(df_dep_codici))
+                with k2: st.metric("📋 Tipi giorno",  df_dep_codici["valid"].nunique())
                 with k3:
-                    # Periodo più comune
-                    if len(df_dep_codici) > 0:
-                        periodo = f"{df_dep_codici['dal'].iloc[0]} → {df_dep_codici['al'].iloc[0]}"
-                    else:
-                        periodo = "—"
+                    periodo = f"{df_dep_codici['dal'].iloc[0]} → {df_dep_codici['al'].iloc[0]}" \
+                              if len(df_dep_codici) > 0 else "—"
                     st.metric("📅 Validità", periodo)
 
                 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-                # Griglia card codici turno
                 if len(df_dep_codici) > 0:
                     colore_dep = get_colore_deposito(dep_esplora)
-
-                    # Raggruppa per valid per mostrare sezioni separate
                     for tipo in sorted(df_dep_codici["valid"].unique()):
                         df_tipo = df_dep_codici[df_dep_codici["valid"] == tipo]
-                        label_tipo = {
-                            "Lu-Ve": "📅 Lunedì — Venerdì",
-                            "Sa":    "📅 Sabato",
-                            "Do":    "📅 Domenica"
-                        }.get(tipo, tipo)
-
+                        label_tipo = {"Lu-Ve": "📅 Lunedì — Venerdì",
+                                      "Sa": "📅 Sabato", "Do": "📅 Domenica"}.get(tipo, tipo)
                         st.markdown(
                             f"<p style='color:#93c5fd;font-weight:700;font-size:1rem;"
                             f"margin:16px 0 8px;letter-spacing:1px;'>{label_tipo}"
                             f" <span style='color:#64748b;font-size:0.8rem;font-weight:400;'>"
                             f"({len(df_tipo)} turni · {df_tipo['dal'].iloc[0]} → {df_tipo['al'].iloc[0]})"
-                            f"</span></p>",
-                            unsafe_allow_html=True
+                            f"</span></p>", unsafe_allow_html=True
                         )
-
                         codici = df_tipo["codice_turno"].tolist()
-                        # Mostra in griglia a 8 colonne
                         cols_per_row = 8
                         for i in range(0, len(codici), cols_per_row):
                             cols = st.columns(cols_per_row)
                             for j, codice in enumerate(codici[i:i+cols_per_row]):
                                 with cols[j]:
                                     st.markdown(
-                                        f"<div style='"
-                                        f"background:rgba(15,23,42,0.8);"
+                                        f"<div style='background:rgba(15,23,42,0.8);"
                                         f"border:1px solid {colore_dep}55;"
                                         f"border-left:3px solid {colore_dep};"
-                                        f"border-radius:8px;"
-                                        f"padding:8px 6px;"
-                                        f"text-align:center;"
-                                        f"font-size:0.85rem;"
-                                        f"font-weight:700;"
-                                        f"color:#e2e8f0;"
-                                        f"letter-spacing:0.5px;"
-                                        f"margin-bottom:6px;"
-                                        f"'>{codice}</div>",
-                                        unsafe_allow_html=True
+                                        f"border-radius:8px;padding:8px 6px;text-align:center;"
+                                        f"font-size:0.85rem;font-weight:700;color:#e2e8f0;"
+                                        f"letter-spacing:0.5px;margin-bottom:6px;"
+                                        f"'>{codice}</div>", unsafe_allow_html=True
                                     )
                 else:
                     st.info("Nessun codice turno trovato per la selezione.")
@@ -1692,7 +1669,6 @@ with tab3:
             except Exception as e:
                 st.warning(f"⚠️ Impossibile caricare i codici turno: {e}")
 
-            # ---- distribuzione % per deposito (pie) ----
             st.markdown("---")
             st.markdown("#### <i class='fas fa-chart-pie'></i> Distribuzione Turni per Deposito", unsafe_allow_html=True)
             totale_per_dep = df_tc_agg.groupby("deposito")["turni"].sum().reset_index()
@@ -1700,8 +1676,7 @@ with tab3:
                 labels=[d.title() for d in totale_per_dep["deposito"]],
                 values=totale_per_dep["turni"],
                 marker=dict(colors=[get_colore_deposito(d) for d in totale_per_dep["deposito"]]),
-                hole=0.4,
-                textinfo="label+percent+value",
+                hole=0.4, textinfo="label+percent+value",
                 hovertemplate="<b>%{label}</b><br>Turni: %{value}<br>%{percent}<extra></extra>"
             ))
             fig_pie_tc.update_layout(
@@ -1712,30 +1687,11 @@ with tab3:
             )
             st.plotly_chart(fig_pie_tc, use_container_width=True, key="pc_14")
 
-            # ---- turni per tipo giorno (cumulativo per deposito) ----
             st.markdown("---")
             st.markdown("#### <i class='fas fa-calendar-week'></i> Turni per Giorno — Lu-Ve / Sabato / Domenica", unsafe_allow_html=True)
-            st.markdown(
-                "<p style='color:#93c5fd;font-size:0.9rem;'>Turni attivi in un singolo giorno per ogni tipo. "
-                "Le barre si sommano man mano che aggiungi depositi dal filtro in alto.</p>",
-                unsafe_allow_html=True
-            )
 
-            # Mappa daytype → categoria (Lu-Ve / Sabato / Domenica)
-            def daytype_to_categoria(dt: str) -> str:
-                dt = (dt or "").strip().lower()
-                if dt in ["lunedi","martedi","mercoledi","giovedi","venerdi"]:
-                    return "Lu-Ve"
-                elif dt == "sabato":
-                    return "Sabato"
-                elif dt == "domenica":
-                    return "Domenica"
-                return dt.title()
-
-            # Unisce df_tc_plot con calendar per avere il daytype
             if turni_cal_ok and len(df_tc_plot) > 0:
                 try:
-                    # Carica il calendar solo con le date presenti nei turni filtrati
                     date_list = df_tc_plot["giorno"].dt.date.unique().tolist()
                     date_str  = ",".join([f"'{d}'" for d in date_list])
                     df_cal_mini = pd.read_sql(
@@ -1747,16 +1703,17 @@ with tab3:
                     df_tc_daytype = df_tc_plot.merge(
                         df_cal_mini, left_on="giorno", right_on="data", how="left"
                     )
+
+                    def daytype_to_categoria(dt: str) -> str:
+                        dt = (dt or "").strip().lower()
+                        if dt in ["lunedi","martedi","mercoledi","giovedi","venerdi"]: return "Lu-Ve"
+                        elif dt == "sabato":   return "Sabato"
+                        elif dt == "domenica": return "Domenica"
+                        return dt.title()
+
                     df_tc_daytype["categoria"] = df_tc_daytype["daytype"].apply(daytype_to_categoria)
-
-                    # Per ogni deposito + categoria prendi UN giorno rappresentativo
-                    # (tutti i Lu-Ve hanno gli stessi turni, idem Sa e Do)
-                    # → prendi il primo giorno disponibile per categoria
                     cat_order = ["Lu-Ve", "Sabato", "Domenica"]
-
-                    primo_giorno_per_cat = (
-                        df_tc_daytype.groupby("categoria")["giorno"].min().to_dict()
-                    )
+                    primo_giorno_per_cat = df_tc_daytype.groupby("categoria")["giorno"].min().to_dict()
 
                     agg_daytype_list = []
                     for cat, primo_gg in primo_giorno_per_cat.items():
@@ -1764,89 +1721,44 @@ with tab3:
                         agg_daytype_list.append(df_giorno)
 
                     agg_daytype = pd.concat(agg_daytype_list, ignore_index=True) if agg_daytype_list else pd.DataFrame()
-
-                    # Ordine fisso categorie
-                    agg_daytype["categoria"] = pd.Categorical(
-                        agg_daytype["categoria"], categories=cat_order, ordered=True
-                    )
+                    agg_daytype["categoria"] = pd.Categorical(agg_daytype["categoria"], categories=cat_order, ordered=True)
                     agg_daytype = agg_daytype.sort_values(["categoria", "deposito"])
-
-                    # Totali per categoria (somma depositi in quel singolo giorno)
                     totale_cat = agg_daytype.groupby("categoria")["turni"].sum().reindex(cat_order, fill_value=0)
 
                     fig_daytype = go.Figure()
-
                     for dep in sorted(agg_daytype["deposito"].unique()):
                         dep_data = agg_daytype[agg_daytype["deposito"] == dep]
-                        valori   = [
-                            dep_data[dep_data["categoria"] == cat]["turni"].sum()
-                            if cat in dep_data["categoria"].values else 0
-                            for cat in cat_order
-                        ]
+                        valori = [dep_data[dep_data["categoria"] == cat]["turni"].sum()
+                                  if cat in dep_data["categoria"].values else 0 for cat in cat_order]
                         fig_daytype.add_trace(go.Bar(
-                            x=cat_order,
-                            y=valori,
-                            name=dep.title(),
+                            x=cat_order, y=valori, name=dep.title(),
                             marker_color=get_colore_deposito(dep),
                             marker_line=dict(width=0.4, color="rgba(255,255,255,0.12)"),
                             text=[f"{v:,}" if v > 0 else "" for v in valori],
-                            textposition="inside",
-                            textfont=dict(size=11, color="white"),
-                            hovertemplate=(
-                                f"<b>{dep.title()}</b><br>"
-                                "Tipo: %{x}<br>"
-                                "Turni: <b>%{y:,}</b><extra></extra>"
-                            )
+                            textposition="inside", textfont=dict(size=11, color="white"),
+                            hovertemplate=f"<b>{dep.title()}</b><br>Tipo: %{{x}}<br>Turni: <b>%{{y:,}}</b><extra></extra>"
                         ))
 
-                    # Annotazioni totale sopra ogni barra
                     fig_daytype.update_layout(
-                        barmode="stack",
-                        height=480,
-                        hovermode="x unified",
-                        plot_bgcolor="rgba(15,23,42,0.8)",
-                        paper_bgcolor="rgba(15,23,42,0.5)",
+                        barmode="stack", height=480, hovermode="x unified",
+                        plot_bgcolor="rgba(15,23,42,0.8)", paper_bgcolor="rgba(15,23,42,0.5)",
                         font=dict(color="#cbd5e1", family="Arial, sans-serif"),
-                        legend=dict(
-                            orientation="h",
-                            yanchor="bottom", y=1.02,
-                            xanchor="right", x=1,
-                            font=dict(size=11)
-                        ),
-                        xaxis=dict(
-                            title="Tipo Giorno",
-                            gridcolor="rgba(96,165,250,0.1)",
-                            linecolor="rgba(96,165,250,0.3)",
-                        ),
-                        yaxis=dict(
-                            title="Turni Totali",
-                            gridcolor="rgba(96,165,250,0.1)",
-                            linecolor="rgba(96,165,250,0.3)",
-                        ),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=11)),
+                        xaxis=dict(title="Tipo Giorno", gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
+                        yaxis=dict(title="Turni Totali", gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.3)"),
                         annotations=[
-                            dict(
-                                x=cat,
-                                y=totale_cat[cat],
-                                text=f"<b>{int(totale_cat[cat]):,}</b>",
-                                xanchor="center",
-                                yanchor="bottom",
-                                showarrow=False,
-                                font=dict(size=13, color="#ffffff"),
-                                yshift=6
-                            )
+                            dict(x=cat, y=totale_cat[cat], text=f"<b>{int(totale_cat[cat]):,}</b>",
+                                 xanchor="center", yanchor="bottom", showarrow=False,
+                                 font=dict(size=13, color="#ffffff"), yshift=6)
                             for cat in cat_order if totale_cat[cat] > 0
                         ]
                     )
                     st.plotly_chart(fig_daytype, use_container_width=True, key="pc_15")
 
-                    # KPI veloci sotto il grafico
                     k1, k2, k3 = st.columns(3)
-                    with k1:
-                        st.metric("📅 Turni/giorno Lu-Ve",   f"{int(totale_cat.get('Lu-Ve', 0)):,}")
-                    with k2:
-                        st.metric("📅 Turni/giorno Sabato",  f"{int(totale_cat.get('Sabato', 0)):,}")
-                    with k3:
-                        st.metric("📅 Turni/giorno Domenica",f"{int(totale_cat.get('Domenica', 0)):,}")
+                    with k1: st.metric("📅 Turni/giorno Lu-Ve",    f"{int(totale_cat.get('Lu-Ve', 0)):,}")
+                    with k2: st.metric("📅 Turni/giorno Sabato",   f"{int(totale_cat.get('Sabato', 0)):,}")
+                    with k3: st.metric("📅 Turni/giorno Domenica", f"{int(totale_cat.get('Domenica', 0)):,}")
 
                 except Exception as e:
                     st.warning(f"⚠️ Impossibile caricare analisi per tipo giorno: {e}")
@@ -1858,7 +1770,7 @@ with tab3:
 with tab4:
     if len(df_filtered) > 0 and len(by_deposito) > 0:
         st.markdown("#### <i class='fas fa-trophy'></i> Ranking Depositi per Gap Medio", unsafe_allow_html=True)
-        soglia_per_dep = soglia_gap  # gap medio già per giorno
+        soglia_per_dep = soglia_gap
         colors_dep = [
             '#dc2626' if g < soglia_per_dep else '#fb923c' if g < 0 else '#22c55e'
             for g in by_deposito["media_gap_giorno"]
@@ -1914,7 +1826,6 @@ with tab4:
             }),
             use_container_width=True, hide_index=True
         )
-
 
 
 # ══════════════════════════════════════════════════
