@@ -381,8 +381,7 @@ def ensure_auth_or_stop() -> None:
 
 ensure_auth_or_stop()
 
-# ✅ Disattiva CSS del login (evita che resti nel DOM)
-inject_css("", style_id=LOGIN_STYLE_ID, include_fa=False)
+
 
 
 # --------------------------------------------------
@@ -611,11 +610,6 @@ def render_splash_once() -> None:
 
     time.sleep(3.4)
 
-    # ✅ IMPORTANTISSIMO: svuota lo style splash prima del rerun (niente CSS zombie)
-    inject_css("", style_id=SPLASH_STYLE_ID, include_fa=False)
-    st.rerun()
-
-
 render_splash_once()
 
 # ✅ EXTRA safety: assicurati che sidebar/header siano visibili dopo splash
@@ -629,10 +623,6 @@ inject_css(
     style_id="ca-ui-reset",
     include_fa=False,
 )
-
-# --------------------------------------------------
-# Da qui in poi: dashboard vera e propria
-# --------------------------------------------------
 
 # --------------------------------------------------
 # CSS DASHBOARD (warm premium, coerente)  ✅ UNA SOLA VOLTA
