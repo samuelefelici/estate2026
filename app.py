@@ -1142,6 +1142,14 @@ with tab2:
             colore_gap = "#22c55e" if gap_medio_wf >= 0 else "#ef4444"
             colore_disp = "#3b82f6"  # blu per il subtotale intermedio
 
+            colors = [
+                "#22c55e",     # Autisti (absolute)
+                "#ef4444",     # Assenze (relative negativa)
+                colore_disp,   # Disponibili Netti (total)
+                "#ef4444",     # Turni (relative negativa)
+                colore_gap,    # Gap finale (total)
+            ]
+
             fig_wf = go.Figure(go.Waterfall(
                 orientation="v",
                 measure=["absolute", "relative", "total", "relative", "total"],
@@ -1158,17 +1166,21 @@ with tab2:
                     f"<b>−{assenze_medie:.0f}</b>",
                     f"<b>{disponibili_medi:.0f}</b>",
                     f"<b>−{turni_medi:.0f}</b>",
-                    f"<b>{'+'if gap_medio_wf>=0 else ''}{gap_medio_wf:.0f}</b>",
+                    f"<b>{'+' if gap_medio_wf >= 0 else ''}{gap_medio_wf:.0f}</b>",
                 ],
                 textposition="outside",
                 textfont=dict(size=13, color="#e2e8f0"),
-                connector={"line": {"color": "rgba(96,165,250,0.4)", "width": 1.5, "dash": "dot"}},
-                increasing={"marker": {"color": "#22c55e", "line": {"color": "#16a34a", "width": 1}}},
-                decreasing={"marker": {"color": "#ef4444", "line": {"color": "#dc2626", "width": 1}}},
-                totals={"marker": {
-                    "color": [colore_disp, colore_gap],
-                    "line": {"color": "rgba(255,255,255,0.3)", "width": 1}
-                }},
+                marker={
+                    "color": colors,
+                    "line": {"color": "rgba(255,255,255,0.25)", "width": 1}
+                },
+                connector={
+                    "line": {
+                        "color": "rgba(96,165,250,0.4)",
+                        "width": 1.5,
+                        "dash": "dot"
+                    }
+                },
                 hovertemplate=(
                     "<b>%{x}</b><br>"
                     "Valore: <b>%{y:.1f}</b> persone<br>"
