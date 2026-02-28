@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import psycopg2
+from io import BytesIO
 
 from textwrap import dedent
 
