@@ -297,37 +297,37 @@ def check_password():
                 unsafe_allow_html=True,
             )
 
-    st.markdown(f"""
-    <div class='ca-security'>
-        <div class='ca-security-row'>
+        st.markdown(dedent(f"""
+        <div class='ca-security'>
+          <div class='ca-security-row'>
             <span class='ca-security-item'>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>Connessione cifrata
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>Connessione cifrata
             </span>
             <span class='ca-sep'>·</span>
             <span class='ca-security-item'>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>Sistema protetto
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>Sistema protetto
             </span>
             <span class='ca-sep'>·</span>
             <span class='ca-security-item'>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 8v4l3 3"/>
-                </svg>Accesso riservato · Estate 2026
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v4l3 3"/>
+              </svg>Accesso riservato · Estate 2026
             </span>
-        </div>
+          </div>
 
-        <div style="text-align:center;">
-          <div class="ca-security-credits">
-            Progettato e sviluppato da <b style='color:#78350f !important;'>Samuele Felici</b> · © {yr} — Tutti i diritti riservati
+          <div style="text-align:center;">
+            <div class="ca-security-credits">
+              Progettato e sviluppato da <b style='color:#78350f !important;'>Samuele Felici</b> · © {yr} — Tutti i diritti riservati
+            </div>
           </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """), unsafe_allow_html=True)
 
     return False
 
