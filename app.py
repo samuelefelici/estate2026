@@ -58,13 +58,14 @@ def get_colore_deposito(dep: str) -> str:
 # --------------------------------------------------
 # CSS INJECTION UTILITY (con style_id per sovrascrivere)
 # --------------------------------------------------
-def inject_css(css: str, style_id: str, include_fa: bool = False) -> None:
+def inject_css(css: str, style_id: str = "ca-global-style", include_fa: bool = True):
     css = dedent(css).strip()
+
     fa = (
         '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">'
-        if include_fa
-        else ""
+        if include_fa else ""
     )
+
     st.markdown(
         f"""{fa}
 <style id="{style_id}">
