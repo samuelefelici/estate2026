@@ -65,135 +65,183 @@ def check_password():
 
     yr = datetime.now().year
 
-    st.markdown("""
+    st.markdown(f"""
     <style>
-    [data-testid="stSidebar"] { display: none !important; }
-    [data-testid="stHeader"]  { display: none !important; }
-    footer { display: none !important; }
-    .block-container { padding-top: 0 !important; max-width: 100% !important; }
-    .stApp { background: #020b18 !important; }
+    [data-testid="stSidebar"] {{ display: none !important; }}
+    [data-testid="stHeader"]  {{ display: none !important; }}
+    footer {{ display: none !important; }}
+    .block-container {{ padding-top: 0 !important; max-width: 100% !important; }}
+    .stApp {{ background: #020b18 !important; }}
 
-    @keyframes gridPulse { 0%, 100% { opacity: 0.07; } 50% { opacity: 0.16; } }
-    @keyframes nebula {
-        0%, 100% { transform: translate(-50%, -50%) scale(1);   opacity: 0.55; }
-        50%       { transform: translate(-50%, -50%) scale(1.1); opacity: 0.80; }
-    }
-    @keyframes rise {
-        0%   { transform: translateY(0) translateX(0);    opacity: 0; }
-        10%  { opacity: 0.8; }
-        90%  { opacity: 0.5; }
-        100% { transform: translateY(-100vh) translateX(20px); opacity: 0; }
-    }
-    @keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+    @keyframes gridPulse {{ 0%, 100% {{ opacity: 0.07; }} 50% {{ opacity: 0.16; }} }}
+    @keyframes nebula {{
+        0%, 100% {{ transform: translate(-50%, -50%) scale(1);   opacity: 0.55; }}
+        50%       {{ transform: translate(-50%, -50%) scale(1.1); opacity: 0.80; }}
+    }}
 
-    .ca-bg-grid {
+    /* ✅ seconda nebula calda e leggera */
+    @keyframes nebulaWarm {{
+        0%, 100% {{ transform: translate(-50%, -50%) scale(1);    opacity: 0.16; }}
+        50%      {{ transform: translate(-50%, -50%) scale(1.08); opacity: 0.28; }}
+    }}
+
+    @keyframes rise {{
+        0%   {{ transform: translateY(0) translateX(0);    opacity: 0; }}
+        10%  {{ opacity: 0.8; }}
+        90%  {{ opacity: 0.5; }}
+        100% {{ transform: translateY(-100vh) translateX(20px); opacity: 0; }}
+    }}
+    @keyframes twinkle {{ 0%, 100% {{ opacity: 0.2; }} 50% {{ opacity: 1; }} }}
+
+    .ca-bg-grid {{
         position: fixed; inset: 0; z-index: 0; pointer-events: none;
         background-image:
             linear-gradient(rgba(59,130,246,0.06) 1px, transparent 1px),
             linear-gradient(90deg, rgba(59,130,246,0.06) 1px, transparent 1px);
         background-size: 48px 48px;
         animation: gridPulse 5s ease-in-out infinite;
-    }
-    .ca-bg-nebula {
+    }}
+
+    .ca-bg-nebula {{
         position: fixed; top: 50%; left: 50%;
         width: 900px; height: 700px;
         background: radial-gradient(ellipse,
             rgba(37,99,235,0.22) 0%, rgba(15,23,42,0.5) 45%, transparent 70%);
         animation: nebula 8s ease-in-out infinite;
         pointer-events: none; z-index: 0;
-    }
+    }}
 
-    /* ----- TITOLO CALDO ----- */
-    .ca-login-title{
+    .ca-bg-nebula-warm {{
+        position: fixed; top: 52%; left: 52%;
+        width: 980px; height: 780px;
+        background: radial-gradient(ellipse,
+            rgba(251,191,36,0.22) 0%,
+            rgba(245,158,11,0.14) 30%,
+            rgba(180,83,9,0.10) 52%,
+            transparent 72%);
+        animation: nebulaWarm 9.5s ease-in-out infinite;
+        pointer-events: none; z-index: 0;
+        filter: blur(0.2px);
+    }}
+
+    /* ✅ titolo più premium */
+    .ca-login-title {{
         text-align:center;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
         z-index: 2;
         position: relative;
-        font-size: 0.95rem;
-        font-weight: 800;
-        letter-spacing: 4px;
+
+        font-size: 1.02rem;
+        font-weight: 900;
+        letter-spacing: 6px;
         text-transform: uppercase;
-        color: #f59e0b;
-        text-shadow: 0 0 14px rgba(245,158,11,0.35), 0 0 30px rgba(180,83,9,0.25);
-    }
 
-    .ca-particle { position: fixed; border-radius: 50%; animation: rise linear infinite; pointer-events: none; z-index: 0; }
-    .ca-star { position: fixed; width: 2px; height: 2px; background: white; border-radius: 50%; animation: twinkle ease-in-out infinite; pointer-events: none; z-index: 0; }
+        color: #fde68a;
+        background: linear-gradient(90deg,
+            rgba(245,158,11,0.00),
+            rgba(245,158,11,0.12),
+            rgba(245,158,11,0.00));
+        border: 1px solid rgba(245,158,11,0.22);
+        border-radius: 14px;
+        padding: 10px 14px;
 
-    div[data-testid="stTextInput"] > div > div {
+        text-shadow:
+          0 0 18px rgba(245,158,11,0.35),
+          0 0 38px rgba(180,83,9,0.25);
+        backdrop-filter: blur(8px);
+    }}
+
+    .ca-particle {{ position: fixed; border-radius: 50%; animation: rise linear infinite; pointer-events: none; z-index: 0; }}
+    .ca-star {{ position: fixed; width: 2px; height: 2px; background: white; border-radius: 50%; animation: twinkle ease-in-out infinite; pointer-events: none; z-index: 0; }}
+
+    div[data-testid="stTextInput"] > div > div {{
         background: rgba(5, 15, 40, 0.9) !important;
-        border: 1px solid rgba(59,130,246,0.4) !important;
+        border: 1px solid rgba(245,158,11,0.35) !important;
         border-radius: 10px !important;
-    }
-    div[data-testid="stTextInput"] > div > div:focus-within {
-        border-color: rgba(59,130,246,0.8) !important;
-        box-shadow: 0 0 0 3px rgba(59,130,246,0.15) !important;
-    }
-    div[data-testid="stTextInput"] input {
-        color: #e0f0ff !important; font-size: 1rem !important; letter-spacing: 3px !important;
-    }
-    div[data-testid="stTextInput"] label { display: none !important; }
+    }}
+    div[data-testid="stTextInput"] > div > div:focus-within {{
+        border-color: rgba(245,158,11,0.75) !important;
+        box-shadow: 0 0 0 3px rgba(245,158,11,0.14) !important;
+    }}
+    div[data-testid="stTextInput"] input {{
+        color: #fff7ed !important;
+        font-size: 1rem !important;
+        letter-spacing: 3px !important;
+    }}
+    div[data-testid="stTextInput"] label {{ display: none !important; }}
 
-    /* ----- LOGO + GLOW CALDO ----- */
-    .ca-logo-wrap{
+    /* ✅ logo con glow caldo e più luminoso dietro */
+    .ca-logo-wrap {{
         position: relative;
         display: inline-block;
-    }
-    .ca-logo-glow{
+    }}
+    .ca-logo-glow {{
         position:absolute;
-        inset:-38px;
+        inset:-44px;
         z-index:0;
-        border-radius:28px;
+        border-radius:30px;
         background: radial-gradient(circle at 50% 45%,
-            rgba(251,191,36,0.52) 0%,
-            rgba(245,158,11,0.34) 30%,
-            rgba(180,83,9,0.20) 55%,
+            rgba(251,191,36,0.62) 0%,
+            rgba(245,158,11,0.40) 30%,
+            rgba(180,83,9,0.22) 55%,
             rgba(2,11,24,0.0) 74%);
-        filter: blur(10px);
-    }
-    .ca-logo-img{
+        filter: blur(12px);
+    }}
+    .ca-logo-img {{
         position: relative;
         z-index: 1;
         transition: filter 0.4s ease;
         cursor: default;
-    }
-    .ca-logo-img:hover {
+    }}
+    .ca-logo-img:hover {{
         filter: drop-shadow(0 0 18px rgba(251,191,36,0.55))
                 drop-shadow(0 0 36px rgba(245,158,11,0.35))
                 drop-shadow(0 0 55px rgba(59,130,246,0.15))
                 brightness(1.08);
-    }
+    }}
 
-    .ca-security {
+    .ca-security {{
         position: fixed; bottom: 0; left: 0; right: 0;
-        padding: 9px 20px;
-        background: rgba(2,11,24,0.92);
+        padding: 10px 20px 12px 20px;  /* più spazio per i credits */
+        background: rgba(2,11,24,0.94);
         border-top: 1px solid rgba(59,130,246,0.22);
-        backdrop-filter: blur(8px);
+        backdrop-filter: blur(10px);
         box-shadow: 0 -12px 30px rgba(0,0,0,0.45);
         z-index: 9999;
-    }
-    .ca-security-row { display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap; }
-    .ca-security-item {
-        color: rgba(226,232,240,0.92); font-size: 0.72rem; letter-spacing: 2px;
-        text-transform: uppercase; display: flex; align-items: center; gap: 8px;
+    }}
+    .ca-security-row {{ display: flex; justify-content: center; align-items: center; gap: 18px; flex-wrap: wrap; }}
+    .ca-security-item {{
+        color: rgba(226,232,240,0.92);
+        font-size: 0.72rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 8px;
         text-shadow: 0 0 10px rgba(59,130,246,0.25);
-    }
-    .ca-security-item svg { color: rgba(147,197,253,0.95); filter: drop-shadow(0 0 10px rgba(59,130,246,0.25)); }
-    .ca-sep { color: rgba(147,197,253,0.55); font-size: 1rem; text-shadow: 0 0 10px rgba(59,130,246,0.15); }
+    }}
+    .ca-security-item svg {{ color: rgba(147,197,253,0.95); filter: drop-shadow(0 0 10px rgba(59,130,246,0.25)); }}
+    .ca-sep {{ color: rgba(147,197,253,0.55); font-size: 1rem; text-shadow: 0 0 10px rgba(59,130,246,0.15); }}
 
-    /* ----- CREDITS ----- */
-    .ca-security-credits{
-        margin-top: 8px;
+    /* ✅ credits VISIBILI: pill + contrasto, ma mantiene il tuo marrone sul nome */
+    .ca-security-credits {{
+        margin-top: 7px;
         text-align: center;
-        font-size: 0.70rem;
+        font-size: 0.72rem;
         letter-spacing: 0.6px;
-        color: rgba(226,232,240,0.75);
-    }
+        color: rgba(226,232,240,0.82);
+        text-shadow: 0 0 12px rgba(0,0,0,0.55);
+        background: rgba(255, 247, 237, 0.10);
+        border: 1px solid rgba(245,158,11,0.18);
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 12px;
+    }}
     </style>
 
     <div class="ca-bg-grid"></div>
     <div class="ca-bg-nebula"></div>
+    <div class="ca-bg-nebula-warm"></div>
 
     <div class="ca-star" style="top:8%;  left:15%; animation-duration:3s;   animation-delay:0s;"></div>
     <div class="ca-star" style="top:22%; left:78%; animation-duration:4s;   animation-delay:1s;"></div>
@@ -217,7 +265,7 @@ def check_password():
     with col:
         st.markdown("<div style='height:18vh'></div>", unsafe_allow_html=True)
 
-        # Titolo sopra input (non dentro _entered)
+        # Titolo sopra input
         st.markdown("<div class='ca-login-title'>ANALISI ESTATE 2026</div>", unsafe_allow_html=True)
 
         def _entered():
@@ -273,8 +321,10 @@ def check_password():
             </span>
         </div>
 
-        <div class="ca-security-credits">
-          Progettato e sviluppato da <b style='color:#78350f !important;'>Samuele Felici</b> · © {yr} — Tutti i diritti riservati
+        <div style="text-align:center;">
+          <div class="ca-security-credits">
+            Progettato e sviluppato da <b style='color:#78350f !important;'>Samuele Felici</b> · © {yr} — Tutti i diritti riservati
+          </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
