@@ -353,6 +353,7 @@ if not check_password():
 # --------------------------------------------------
 if not st.session_state.get("splash_done"):
     st.session_state["splash_done"] = True
+
     st.markdown("""
 <style>
 [data-testid="stSidebar"]{display:none!important}
@@ -361,52 +362,196 @@ footer{display:none!important}
 .block-container{padding:0!important;max-width:100%!important}
 .stApp{background:#020b18!important;overflow:hidden}
 
+/* ───────────────────────────────────────────────
+   Palette “calda premium” coerente col login
+   ─────────────────────────────────────────────── */
+:root{
+  --warm-1: rgba(251,191,36,0.70);  /* amber */
+  --warm-2: rgba(245,158,11,0.45);  /* orange */
+  --warm-3: rgba(180,83,9,0.28);    /* brown */
+  --cool-1: rgba(59,130,246,0.14);  /* blue soft */
+}
+
+/* sfondo: griglia + nebule calde */
+@keyframes gridPulse{0%,100%{opacity:0.05}50%{opacity:0.11}}
+@keyframes nebulaCool{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.22}50%{transform:translate(-50%,-50%) scale(1.08);opacity:.34}}
+@keyframes nebulaWarm{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.18}50%{transform:translate(-50%,-50%) scale(1.10);opacity:.30}}
+
 @keyframes corePulse{
-  0%,100%{transform:translate(-50%,-50%) scale(1);box-shadow:0 0 30px 8px rgba(96,165,250,0.7),0 0 80px 30px rgba(37,99,235,0.3)}
-  50%{transform:translate(-50%,-50%) scale(1.15);box-shadow:0 0 55px 18px rgba(96,165,250,0.9),0 0 130px 55px rgba(37,99,235,0.5)}}
+  0%,100%{
+    transform:translate(-50%,-50%) scale(1);
+    box-shadow:
+      0 0 28px 8px rgba(251,191,36,0.55),
+      0 0 70px 26px rgba(245,158,11,0.22),
+      0 0 120px 48px rgba(180,83,9,0.14);
+  }
+  50%{
+    transform:translate(-50%,-50%) scale(1.15);
+    box-shadow:
+      0 0 46px 16px rgba(251,191,36,0.75),
+      0 0 110px 44px rgba(245,158,11,0.30),
+      0 0 170px 70px rgba(180,83,9,0.18);
+  }
+}
+
 @keyframes spin1{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
 @keyframes spin2{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(-360deg)}}
 @keyframes spin3{from{transform:translate(-50%,-50%) rotate(45deg)}to{transform:translate(-50%,-50%) rotate(405deg)}}
+
 @keyframes orb1{from{transform:rotate(0deg) translateX(105px) rotate(0deg)}to{transform:rotate(360deg) translateX(105px) rotate(-360deg)}}
 @keyframes orb2{from{transform:rotate(120deg) translateX(160px) rotate(-120deg)}to{transform:rotate(480deg) translateX(160px) rotate(-480deg)}}
 @keyframes orb3{from{transform:rotate(240deg) translateX(215px) rotate(-240deg)}to{transform:rotate(600deg) translateX(215px) rotate(-600deg)}}
 @keyframes orb4{from{transform:rotate(60deg) translateX(260px) rotate(-60deg)}to{transform:rotate(420deg) translateX(260px) rotate(-420deg)}}
 @keyframes orb5{from{transform:rotate(180deg) translateX(105px) rotate(-180deg)}to{transform:rotate(540deg) translateX(105px) rotate(-540deg)}}
-@keyframes blobFloat{0%,100%{transform:translate(-50%,-50%) scale(1) rotate(0deg);opacity:0.5}50%{transform:translate(-50%,-50%) scale(1.2) rotate(120deg);opacity:0.8}}
+
+@keyframes blobFloat{0%,100%{transform:translate(-50%,-50%) scale(1) rotate(0deg);opacity:.40}50%{transform:translate(-50%,-50%) scale(1.18) rotate(120deg);opacity:.62}}
 @keyframes fadeOutSplash{0%,80%{opacity:1}100%{opacity:0}}
 @keyframes progressFill{from{width:0%}to{width:100%}}
-@keyframes textPulse{0%,100%{opacity:0.4;letter-spacing:3px}50%{opacity:1;letter-spacing:5px}}
-@keyframes gridPulse{0%,100%{opacity:0.04}50%{opacity:0.1}}
-@keyframes starTwinkle{0%,100%{opacity:0.1}50%{opacity:0.8}}
+@keyframes textPulse{0%,100%{opacity:.55;letter-spacing:4px}50%{opacity:1;letter-spacing:6px}}
+@keyframes starTwinkle{0%,100%{opacity:.10}50%{opacity:.65}}
 
-.sp-wrap{position:fixed;inset:0;z-index:99999;background:#020b18;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fadeOutSplash 3.6s ease forwards}
-.sp-wrap::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(59,130,246,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.05) 1px,transparent 1px);background-size:48px 48px;animation:gridPulse 4s ease-in-out infinite}
+.sp-wrap{
+  position:fixed;inset:0;z-index:99999;
+  background:#020b18;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  animation:fadeOutSplash 3.6s ease forwards;
+  overflow:hidden;
+}
+.sp-wrap::before{
+  content:'';
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(59,130,246,0.05) 1px,transparent 1px);
+  background-size:48px 48px;
+  animation:gridPulse 4s ease-in-out infinite;
+}
+
+/* nebule background */
+.sp-nebula-cool{
+  position:absolute; top:48%; left:50%;
+  width:900px; height:700px;
+  background:radial-gradient(ellipse,
+    rgba(59,130,246,0.18) 0%,
+    rgba(15,23,42,0.55) 45%,
+    transparent 72%);
+  animation:nebulaCool 8.5s ease-in-out infinite;
+  pointer-events:none;
+  filter:blur(.3px);
+}
+.sp-nebula-warm{
+  position:absolute; top:52%; left:52%;
+  width:980px; height:780px;
+  background:radial-gradient(ellipse,
+    rgba(251,191,36,0.22) 0%,
+    rgba(245,158,11,0.14) 30%,
+    rgba(180,83,9,0.10) 52%,
+    transparent 74%);
+  animation:nebulaWarm 9.5s ease-in-out infinite;
+  pointer-events:none;
+  filter:blur(.2px);
+}
+
 .sp-star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;animation:starTwinkle ease-in-out infinite}
-.sp-arena{position:relative;width:580px;height:580px;flex-shrink:0}
+.sp-arena{position:relative;width:580px;height:580px;flex-shrink:0;z-index:2}
 .sp-ring{position:absolute;top:50%;left:50%;border-radius:50%}
-.sp-ring-1{width:520px;height:520px;margin:-260px 0 0 -260px;border:1.5px solid transparent;border-top:1.5px solid rgba(59,130,246,0.8);border-right:1.5px solid rgba(59,130,246,0.2);animation:spin1 3s linear infinite}
-.sp-ring-2{width:410px;height:410px;margin:-205px 0 0 -205px;border:1px solid transparent;border-top:1px solid rgba(147,197,253,0.6);border-left:1px solid rgba(147,197,253,0.3);animation:spin2 2s linear infinite}
-.sp-ring-3{width:310px;height:310px;margin:-155px 0 0 -155px;border:2px solid transparent;border-bottom:2px solid rgba(37,99,235,0.7);border-right:2px solid rgba(96,165,250,0.4);animation:spin3 4s linear infinite}
-.sp-ring-4{width:220px;height:220px;margin:-110px 0 0 -110px;border:1px solid transparent;border-top:1px solid rgba(167,139,250,0.5);animation:spin1 1.5s linear infinite reverse}
+
+/* ring con accenti caldi */
+.sp-ring-1{
+  width:520px;height:520px;margin:-260px 0 0 -260px;
+  border:1.5px solid transparent;
+  border-top:1.5px solid rgba(245,158,11,0.70);
+  border-right:1.5px solid rgba(245,158,11,0.18);
+  animation:spin1 3s linear infinite;
+}
+.sp-ring-2{
+  width:410px;height:410px;margin:-205px 0 0 -205px;
+  border:1px solid transparent;
+  border-top:1px solid rgba(251,191,36,0.55);
+  border-left:1px solid rgba(251,191,36,0.20);
+  animation:spin2 2s linear infinite;
+}
+.sp-ring-3{
+  width:310px;height:310px;margin:-155px 0 0 -155px;
+  border:2px solid transparent;
+  border-bottom:2px solid rgba(180,83,9,0.55);
+  border-right:2px solid rgba(180,83,9,0.22);
+  animation:spin3 4s linear infinite;
+}
+.sp-ring-4{
+  width:220px;height:220px;margin:-110px 0 0 -110px;
+  border:1px solid transparent;
+  border-top:1px solid rgba(245,158,11,0.35);
+  animation:spin1 1.5s linear infinite reverse;
+}
+
+/* blob caldo */
 .sp-blob{position:absolute;top:50%;left:50%;border-radius:50%;pointer-events:none}
-.sp-blob-1{width:380px;height:220px;margin:-110px 0 0 -190px;background:radial-gradient(ellipse,rgba(37,99,235,0.22) 0%,transparent 70%);animation:blobFloat 5s ease-in-out infinite}
-.sp-core{position:absolute;top:50%;left:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:radial-gradient(circle,#ffffff 0%,#bfdbfe 35%,#3b82f6 70%,#1d4ed8 100%);animation:corePulse 2s ease-in-out infinite;z-index:20}
+.sp-blob-1{
+  width:420px;height:240px;margin:-120px 0 0 -210px;
+  background:radial-gradient(ellipse, rgba(251,191,36,0.16) 0%, transparent 72%);
+  animation:blobFloat 5s ease-in-out infinite;
+}
+
+/* core caldo */
+.sp-core{
+  position:absolute;top:50%;left:50%;
+  width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;
+  background:radial-gradient(circle,
+    #ffffff 0%,
+    #fff7ed 28%,
+    rgba(251,191,36,0.95) 55%,
+    rgba(245,158,11,0.90) 75%,
+    rgba(180,83,9,0.95) 100%);
+  animation:corePulse 2s ease-in-out infinite;
+  z-index:20;
+}
+
+/* orb: più coerenti (caldi + 1 accento blu) */
 .sp-orb{position:absolute;top:50%;left:50%;border-radius:50%}
-.sp-orb-1{width:10px;height:10px;margin:-5px 0 0 -5px;background:#60a5fa;box-shadow:0 0 12px 4px rgba(96,165,250,0.9);animation:orb1 2.2s linear infinite}
-.sp-orb-2{width:8px;height:8px;margin:-4px 0 0 -4px;background:#ef4444;box-shadow:0 0 10px 3px rgba(239,68,68,0.9);animation:orb2 3.3s linear infinite}
-.sp-orb-3{width:7px;height:7px;margin:-3.5px 0 0 -3.5px;background:#22c55e;box-shadow:0 0 10px 3px rgba(34,197,94,0.9);animation:orb3 4.4s linear infinite}
-.sp-orb-4{width:6px;height:6px;margin:-3px 0 0 -3px;background:#a78bfa;box-shadow:0 0 8px 3px rgba(167,139,250,0.9);animation:orb4 5.5s linear infinite}
-.sp-orb-5{width:9px;height:9px;margin:-4.5px 0 0 -4.5px;background:#38bdf8;box-shadow:0 0 10px 3px rgba(56,189,248,0.9);animation:orb5 1.8s linear infinite}
+.sp-orb-1{width:10px;height:10px;margin:-5px 0 0 -5px;background:#fbbf24;box-shadow:0 0 12px 4px rgba(251,191,36,0.95);animation:orb1 2.2s linear infinite}
+.sp-orb-2{width:8px;height:8px;margin:-4px 0 0 -4px;background:#f59e0b;box-shadow:0 0 10px 3px rgba(245,158,11,0.9);animation:orb2 3.3s linear infinite}
+.sp-orb-3{width:7px;height:7px;margin:-3.5px 0 0 -3.5px;background:#b45309;box-shadow:0 0 10px 3px rgba(180,83,9,0.85);animation:orb3 4.4s linear infinite}
+.sp-orb-4{width:6px;height:6px;margin:-3px 0 0 -3px;background:#60a5fa;box-shadow:0 0 9px 3px rgba(96,165,250,0.60);animation:orb4 5.5s linear infinite}
+.sp-orb-5{width:9px;height:9px;margin:-4.5px 0 0 -4.5px;background:#fde68a;box-shadow:0 0 10px 3px rgba(253,230,138,0.85);animation:orb5 1.8s linear infinite}
+
+/* testo + progress bar (caldi) */
 .sp-text{margin-top:-30px;text-align:center;z-index:10}
-.sp-label{color:#64748b;font-size:0.68rem;letter-spacing:3px;text-transform:uppercase;margin:0 0 14px;animation:textPulse 2s ease-in-out infinite}
-.sp-bar-wrap{width:220px;height:2px;background:rgba(59,130,246,0.1);border-radius:2px;margin:0 auto;overflow:hidden}
-.sp-bar{height:100%;background:linear-gradient(90deg,#1d4ed8,#60a5fa,#1d4ed8);background-size:200% 100%;animation:progressFill 3.2s cubic-bezier(.4,0,.2,1) forwards;box-shadow:0 0 8px rgba(96,165,250,0.8)}
+.sp-label{
+  color:#fde68a;
+  font-size:0.70rem;
+  letter-spacing:4px;
+  text-transform:uppercase;
+  margin:0 0 14px;
+  animation:textPulse 2s ease-in-out infinite;
+  text-shadow:0 0 16px rgba(245,158,11,0.28),0 0 34px rgba(180,83,9,0.20);
+}
+.sp-bar-wrap{
+  width:240px;height:2px;
+  background:rgba(245,158,11,0.12);
+  border-radius:2px;
+  margin:0 auto;
+  overflow:hidden;
+  border:1px solid rgba(245,158,11,0.14);
+}
+.sp-bar{
+  height:100%;
+  background:linear-gradient(90deg, rgba(180,83,9,0.85), rgba(251,191,36,0.95), rgba(180,83,9,0.85));
+  background-size:200% 100%;
+  animation:progressFill 3.2s cubic-bezier(.4,0,.2,1) forwards;
+  box-shadow:0 0 10px rgba(251,191,36,0.55);
+}
 </style>
+
 <div class="sp-wrap">
+  <div class="sp-nebula-cool"></div>
+  <div class="sp-nebula-warm"></div>
+
   <div class="sp-star" style="top:7%;left:12%;animation-duration:2.8s;animation-delay:0s"></div>
   <div class="sp-star" style="top:18%;left:81%;animation-duration:4s;animation-delay:.8s"></div>
   <div class="sp-star" style="top:72%;left:91%;animation-duration:3.2s;animation-delay:.3s"></div>
   <div class="sp-star" style="top:85%;left:7%;animation-duration:5s;animation-delay:1.5s"></div>
+
   <div class="sp-arena">
     <div class="sp-blob sp-blob-1"></div>
     <div class="sp-ring sp-ring-1"></div>
@@ -420,12 +565,14 @@ footer{display:none!important}
     <div class="sp-orb sp-orb-5"></div>
     <div class="sp-core"></div>
   </div>
+
   <div class="sp-text">
     <p class="sp-label">Inizializzazione sistema</p>
     <div class="sp-bar-wrap"><div class="sp-bar"></div></div>
   </div>
 </div>
 """, unsafe_allow_html=True)
+
     import time
     time.sleep(3.4)
     st.rerun()
