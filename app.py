@@ -63,6 +63,8 @@ def check_password():
     except Exception:
         pass
 
+    yr = datetime.now().year
+
     st.markdown("""
     <style>
     [data-testid="stSidebar"] { display: none !important; }
@@ -100,6 +102,21 @@ def check_password():
         animation: nebula 8s ease-in-out infinite;
         pointer-events: none; z-index: 0;
     }
+
+    /* ----- TITOLO CALDO ----- */
+    .ca-login-title{
+        text-align:center;
+        margin-bottom: 16px;
+        z-index: 2;
+        position: relative;
+        font-size: 0.95rem;
+        font-weight: 800;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: #f59e0b;
+        text-shadow: 0 0 14px rgba(245,158,11,0.35), 0 0 30px rgba(180,83,9,0.25);
+    }
+
     .ca-particle { position: fixed; border-radius: 50%; animation: rise linear infinite; pointer-events: none; z-index: 0; }
     .ca-star { position: fixed; width: 2px; height: 2px; background: white; border-radius: 50%; animation: twinkle ease-in-out infinite; pointer-events: none; z-index: 0; }
 
@@ -117,10 +134,34 @@ def check_password():
     }
     div[data-testid="stTextInput"] label { display: none !important; }
 
-    .ca-logo-img { transition: filter 0.4s ease; cursor: default; }
+    /* ----- LOGO + GLOW CALDO ----- */
+    .ca-logo-wrap{
+        position: relative;
+        display: inline-block;
+    }
+    .ca-logo-glow{
+        position:absolute;
+        inset:-38px;
+        z-index:0;
+        border-radius:28px;
+        background: radial-gradient(circle at 50% 45%,
+            rgba(251,191,36,0.52) 0%,
+            rgba(245,158,11,0.34) 30%,
+            rgba(180,83,9,0.20) 55%,
+            rgba(2,11,24,0.0) 74%);
+        filter: blur(10px);
+    }
+    .ca-logo-img{
+        position: relative;
+        z-index: 1;
+        transition: filter 0.4s ease;
+        cursor: default;
+    }
     .ca-logo-img:hover {
-        filter: drop-shadow(0 0 28px rgba(59,130,246,0.65))
-                drop-shadow(0 0 55px rgba(59,130,246,0.3)) brightness(1.1);
+        filter: drop-shadow(0 0 18px rgba(251,191,36,0.55))
+                drop-shadow(0 0 36px rgba(245,158,11,0.35))
+                drop-shadow(0 0 55px rgba(59,130,246,0.15))
+                brightness(1.08);
     }
 
     .ca-security {
@@ -140,10 +181,20 @@ def check_password():
     }
     .ca-security-item svg { color: rgba(147,197,253,0.95); filter: drop-shadow(0 0 10px rgba(59,130,246,0.25)); }
     .ca-sep { color: rgba(147,197,253,0.55); font-size: 1rem; text-shadow: 0 0 10px rgba(59,130,246,0.15); }
+
+    /* ----- CREDITS ----- */
+    .ca-security-credits{
+        margin-top: 8px;
+        text-align: center;
+        font-size: 0.70rem;
+        letter-spacing: 0.6px;
+        color: rgba(226,232,240,0.75);
+    }
     </style>
 
     <div class="ca-bg-grid"></div>
     <div class="ca-bg-nebula"></div>
+
     <div class="ca-star" style="top:8%;  left:15%; animation-duration:3s;   animation-delay:0s;"></div>
     <div class="ca-star" style="top:22%; left:78%; animation-duration:4s;   animation-delay:1s;"></div>
     <div class="ca-star" style="top:55%; left:92%; animation-duration:2.5s; animation-delay:0.5s;"></div>
@@ -152,6 +203,7 @@ def check_password():
     <div class="ca-star" style="top:35%; left:32%; animation-duration:4.5s; animation-delay:0.8s;"></div>
     <div class="ca-star" style="top:15%; left:62%; animation-duration:2.8s; animation-delay:2.5s;"></div>
     <div class="ca-star" style="top:65%; left:55%; animation-duration:3.2s; animation-delay:0.3s;"></div>
+
     <div class="ca-particle" style="width:3px;height:3px;background:#3b82f6;left:10%;bottom:0;animation-duration:9s; animation-delay:0s;"></div>
     <div class="ca-particle" style="width:2px;height:2px;background:#60a5fa;left:25%;bottom:0;animation-duration:12s;animation-delay:2s;"></div>
     <div class="ca-particle" style="width:4px;height:4px;background:#ef4444;left:40%;bottom:0;animation-duration:8s; animation-delay:1s;"></div>
@@ -165,15 +217,19 @@ def check_password():
     with col:
         st.markdown("<div style='height:18vh'></div>", unsafe_allow_html=True)
 
+        # Titolo sopra input (non dentro _entered)
+        st.markdown("<div class='ca-login-title'>ANALISI ESTATE 2026</div>", unsafe_allow_html=True)
+
         def _entered():
-            if st.session_state["_pwd"] == st.secrets["APP_PASSWORD"]:
-                st.session_state["password_correct"] = True
-            else:
-                st.session_state["password_correct"] = False
+            st.session_state["password_correct"] = (st.session_state["_pwd"] == st.secrets["APP_PASSWORD"])
 
         st.text_input(
-            "Password", type="password", on_change=_entered, key="_pwd",
-            placeholder="🔒  Inserisci password", label_visibility="collapsed"
+            "Password",
+            type="password",
+            on_change=_entered,
+            key="_pwd",
+            placeholder="🔒  Inserisci password",
+            label_visibility="collapsed",
         )
 
         if st.session_state.get("password_correct") is False:
@@ -181,14 +237,19 @@ def check_password():
 
         if logo_b64:
             st.markdown(
-                f"<div style='text-align:center; margin-top:28px;'>"
-                f"<img class='ca-logo-img' src='data:image/png;base64,{logo_b64}' "
-                f"style='height:420px; width:auto; opacity:0.93;'/>"
-                f"</div>",
-                unsafe_allow_html=True
+                f"""
+                <div style='text-align:center; margin-top:28px;'>
+                  <div class="ca-logo-wrap">
+                    <div class="ca-logo-glow"></div>
+                    <img class='ca-logo-img' src='data:image/png;base64,{logo_b64}'
+                         style='height:420px; width:auto; opacity:0.96;'/>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
-    st.markdown("""
+    st.markdown(f"""
     <div class='ca-security'>
         <div class='ca-security-row'>
             <span class='ca-security-item'>
@@ -210,6 +271,10 @@ def check_password():
                     <path d="M12 8v4l3 3"/>
                 </svg>Accesso riservato · Estate 2026
             </span>
+        </div>
+
+        <div class="ca-security-credits">
+          Progettato e sviluppato da <b style='color:#78350f !important;'>Samuele Felici</b> · © {yr} — Tutti i diritti riservati
         </div>
     </div>
     """, unsafe_allow_html=True)
