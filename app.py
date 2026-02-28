@@ -586,6 +586,7 @@ if not st.session_state.get("splash_done"):
 
 from textwrap import dedent
 def inject_css(css: str, style_id: str = "ca-global-style", include_fa: bool = True):
+    st.write("DEBUG inject_css called")  # temporaneo
     css = dedent(css).strip()
 
     fa = (
