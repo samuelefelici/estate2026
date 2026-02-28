@@ -269,7 +269,7 @@ footer{{display:none!important}}
 @keyframes orb4{{from{{transform:rotate(60deg) translateX(260px) rotate(-60deg)}}to{{transform:rotate(420deg) translateX(260px) rotate(-420deg)}}}}
 @keyframes orb5{{from{{transform:rotate(180deg) translateX(105px) rotate(-180deg)}}to{{transform:rotate(540deg) translateX(105px) rotate(-540deg)}}}}
 @keyframes blobFloat{{0%,100%{{transform:translate(-50%,-50%) scale(1) rotate(0deg);opacity:0.4}}50%{{transform:translate(-50%,-50%) scale(1.2) rotate(120deg);opacity:0.7}}}}
-@keyframes fadeOutSplash{{0%,80%{{opacity:1}}100%{{opacity:0}}}}
+@keyframes fadeOutSplash{{0%,70%{{opacity:1}}95%{{opacity:0;visibility:visible}}100%{{opacity:0;visibility:hidden}}}}
 @keyframes progressFill{{from{{width:0%}}to{{width:100%}}}}
 @keyframes textPulse{{0%,100%{{opacity:0.3;letter-spacing:4px}}50%{{opacity:1;letter-spacing:6px}}}}
 @keyframes gridPulse2{{0%,100%{{opacity:0.03}}50%{{opacity:0.08}}}}
@@ -325,19 +325,19 @@ footer{{display:none!important}}
   </div>
 </div>
 """, unsafe_allow_html=True)
-    import time
-    time.sleep(3.4)
-    st.rerun()
+    # Splash fades out via CSS animation (no sleep/rerun needed)
 
 
 # --------------------------------------------------
 # CSS DASHBOARD — User-Friendly Warm Theme
 # --------------------------------------------------
-st.markdown(f"""
+st.markdown("""
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<style>
+""", unsafe_allow_html=True)
+
+st.markdown(f"""<style>
 
 /* ─── RESET E BASE ─── */
 *, body, .stApp {{ font-family: 'Outfit', sans-serif !important; }}
@@ -694,7 +694,7 @@ def load_copertura() -> pd.DataFrame:
         forza AS (
             SELECT r.data AS giorno, r.deposito,
                    COUNT(DISTINCT r.matricola) AS persone_in_forza,
-                   COUNT(*) FILTER (WHERE r.turno IS NOT NULL AND TRIM(r.turno) <> '') AS assenze_nominali
+                   COUNT(*) FILTER (WHERE r.turno IN ('R','FP','PS','AP','PADm','NF','FI')) AS assenze_nominali
             FROM roster r
             GROUP BY r.data, r.deposito
         ),
