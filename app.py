@@ -575,28 +575,30 @@ footer{display:none!important}
     time.sleep(3.4)
     st.rerun()
 
-from textwrap import dedent
+if not st.session_state.get("splash_done"):
+    ph = st.empty()
+    with ph:
+        st.markdown("""...SPLASH HTML...""", unsafe_allow_html=True)
+        import time; time.sleep(3.4)
+    st.session_state["splash_done"] = True
+    ph.empty()
+    st.rerun()
 
+from textwrap import dedent
 def inject_css(css: str, style_id: str = "ca-global-style", include_fa: bool = True):
-    """
-    Inietta CSS in modo pulito e unico.
-    - Niente code block
-    - Niente duplicati (stesso style_id)
-    - FontAwesome opzionale via <link> (meglio di @import)
-    """
     css = dedent(css).strip()
 
-    fa_link = (
-        "<link rel=\"stylesheet\" "
-        "href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css\">"
+    fa = (
+        '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">'
         if include_fa else ""
     )
 
     st.markdown(
-        f"""{fa_link}
+        f"""{fa}
 <style id="{style_id}">
 {css}
-</style>""",
+</style>
+""",
         unsafe_allow_html=True,
     )
 
