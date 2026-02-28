@@ -1,6 +1,12 @@
 # ===============================================
 # ESTATE 2026 - DASHBOARD ANALYTICS PREMIUM
+# (LOGIN + SPLASH riscritti in modo pulito e robusto)
 # ===============================================
+
+import os
+import base64
+import time
+from datetime import datetime
 
 import streamlit as st
 import pandas as pd
@@ -9,9 +15,9 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import psycopg2
-from datetime import datetime, timedelta
-from io import BytesIO
-import base64, os
+
+from textwrap import dedent
+
 
 # --------------------------------------------------
 # CONFIGURAZIONE PAGINA
@@ -20,261 +26,278 @@ st.set_page_config(
     page_title="Estate 2026 - Analytics Premium",
     layout="wide",
     initial_sidebar_state="expanded",
-    page_icon="🚍"
+    page_icon="🚍",
 )
+
 
 # --------------------------------------------------
 # MAPPA COLORI DEPOSITI
 # --------------------------------------------------
 COLORI_DEPOSITI = {
-    "ancona":                     "#22c55e",
-    "polverigi":                  "#166534",
-    "marina":                     "#ec4899",
-    "marina di montemarciano":    "#ec4899",
-    "filottrano":                 "#4ade80",
-    "jesi":                       "#f97316",
-    "osimo":                      "#eab308",
-    "castelfidardo":              "#38bdf8",
-    "castelfdardo":               "#38bdf8",
-    "ostra":                      "#ef4444",
-    "belvedere ostrense":         "#94a3b8",
-    "belvedereostrense":          "#94a3b8",
-    "depbelvede":                 "#94a3b8",
-    "moie":                       "#a78bfa",
+    "ancona": "#22c55e",
+    "polverigi": "#166534",
+    "marina": "#ec4899",
+    "marina di montemarciano": "#ec4899",
+    "filottrano": "#4ade80",
+    "jesi": "#f97316",
+    "osimo": "#eab308",
+    "castelfidardo": "#38bdf8",
+    "castelfdardo": "#38bdf8",
+    "ostra": "#ef4444",
+    "belvedere ostrense": "#94a3b8",
+    "belvedereostrense": "#94a3b8",
+    "depbelvede": "#94a3b8",
+    "moie": "#a78bfa",
 }
+
 
 def get_colore_deposito(dep: str) -> str:
     return COLORI_DEPOSITI.get(str(dep).strip().lower(), "#64748b")
 
-# --------------------------------------------------
-# LOGIN
-# --------------------------------------------------
-from textwrap import dedent  # ✅ serve per evitare problemi di indentazione nelle stringhe multilinea
 
-def check_password():
-    if st.session_state.get("password_correct"):
-        return True
+# --------------------------------------------------
+# CSS INJECTION UTILITY (con style_id per sovrascrivere)
+# --------------------------------------------------
+def inject_css(css: str, style_id: str, include_fa: bool = False) -> None:
+    css = dedent(css).strip()
+    fa = (
+        '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">'
+        if include_fa
+        else ""
+    )
+    st.markdown(
+        f"""{fa}
+<style id="{style_id}">
+{css}
+</style>
+""",
+        unsafe_allow_html=True,
+    )
 
-    logo_b64 = ""
+
+# --------------------------------------------------
+# LOGIN (robusto: CSS "zombie" evitato via style_id)
+# --------------------------------------------------
+LOGIN_STYLE_ID = "ca-login-style"
+SPLASH_STYLE_ID = "ca-splash-style"
+
+
+def _load_logo_b64(filename: str = "logoanalytic.png") -> str:
     try:
-        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logoanalytic.png")
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
         with open(p, "rb") as f:
-            logo_b64 = base64.b64encode(f.read()).decode()
+            return base64.b64encode(f.read()).decode()
     except Exception:
-        pass
+        return ""
 
+
+def render_login() -> None:
+    """Disegna la pagina login e imposta st.session_state['password_correct']."""
+    logo_b64 = _load_logo_b64()
     yr = datetime.now().year
 
-    st.markdown(dedent(f"""
-    <style>
-    [data-testid="stSidebar"] {{ display: none !important; }}
-    [data-testid="stHeader"]  {{ display: none !important; }}
-    footer {{ display: none !important; }}
-    .block-container {{ padding-top: 0 !important; max-width: 100% !important; }}
-    .stApp {{ background: #020b18 !important; }}
+    inject_css(
+        f"""
+        [data-testid="stSidebar"] {{ display: none !important; }}
+        [data-testid="stHeader"]  {{ display: none !important; }}
+        footer {{ display: none !important; }}
+        .block-container {{ padding-top: 0 !important; max-width: 100% !important; }}
+        .stApp {{ background: #020b18 !important; }}
 
-    @keyframes gridPulse {{ 0%, 100% {{ opacity: 0.07; }} 50% {{ opacity: 0.16; }} }}
-    @keyframes nebula {{
-        0%, 100% {{ transform: translate(-50%, -50%) scale(1);   opacity: 0.55; }}
-        50%      {{ transform: translate(-50%, -50%) scale(1.1); opacity: 0.80; }}
-    }}
+        @keyframes gridPulse {{ 0%, 100% {{ opacity: 0.07; }} 50% {{ opacity: 0.16; }} }}
+        @keyframes nebula {{
+            0%, 100% {{ transform: translate(-50%, -50%) scale(1);   opacity: 0.55; }}
+            50%      {{ transform: translate(-50%, -50%) scale(1.1); opacity: 0.80; }}
+        }}
+        @keyframes nebulaWarm {{
+            0%, 100% {{ transform: translate(-50%, -50%) scale(1);    opacity: 0.16; }}
+            50%      {{ transform: translate(-50%, -50%) scale(1.08); opacity: 0.28; }}
+        }}
+        @keyframes rise {{
+            0%   {{ transform: translateY(0) translateX(0);    opacity: 0; }}
+            10%  {{ opacity: 0.8; }}
+            90%  {{ opacity: 0.5; }}
+            100% {{ transform: translateY(-100vh) translateX(20px); opacity: 0; }}
+        }}
+        @keyframes twinkle {{ 0%, 100% {{ opacity: 0.2; }} 50% {{ opacity: 1; }} }}
 
-    /* ✅ seconda nebula calda e leggera */
-    @keyframes nebulaWarm {{
-        0%, 100% {{ transform: translate(-50%, -50%) scale(1);    opacity: 0.16; }}
-        50%      {{ transform: translate(-50%, -50%) scale(1.08); opacity: 0.28; }}
-    }}
+        .ca-bg-grid {{
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                linear-gradient(rgba(59,130,246,0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59,130,246,0.06) 1px, transparent 1px);
+            background-size: 48px 48px;
+            animation: gridPulse 5s ease-in-out infinite;
+        }}
+        .ca-bg-nebula {{
+            position: fixed; top: 50%; left: 50%;
+            width: 900px; height: 700px;
+            background: radial-gradient(ellipse,
+                rgba(37,99,235,0.22) 0%, rgba(15,23,42,0.5) 45%, transparent 70%);
+            animation: nebula 8s ease-in-out infinite;
+            pointer-events: none; z-index: 0;
+        }}
+        .ca-bg-nebula-warm {{
+            position: fixed; top: 52%; left: 52%;
+            width: 980px; height: 780px;
+            background: radial-gradient(ellipse,
+                rgba(251,191,36,0.22) 0%,
+                rgba(245,158,11,0.14) 30%,
+                rgba(180,83,9,0.10) 52%,
+                transparent 72%);
+            animation: nebulaWarm 9.5s ease-in-out infinite;
+            pointer-events: none; z-index: 0;
+            filter: blur(0.2px);
+        }}
+        .ca-login-title {{
+            text-align:center;
+            margin-bottom: 14px;
+            z-index: 2;
+            position: relative;
 
-    @keyframes rise {{
-        0%   {{ transform: translateY(0) translateX(0);    opacity: 0; }}
-        10%  {{ opacity: 0.8; }}
-        90%  {{ opacity: 0.5; }}
-        100% {{ transform: translateY(-100vh) translateX(20px); opacity: 0; }}
-    }}
-    @keyframes twinkle {{ 0%, 100% {{ opacity: 0.2; }} 50% {{ opacity: 1; }} }}
+            font-size: 1.02rem;
+            font-weight: 900;
+            letter-spacing: 6px;
+            text-transform: uppercase;
 
-    .ca-bg-grid {{
-        position: fixed; inset: 0; z-index: 0; pointer-events: none;
-        background-image:
-            linear-gradient(rgba(59,130,246,0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(59,130,246,0.06) 1px, transparent 1px);
-        background-size: 48px 48px;
-        animation: gridPulse 5s ease-in-out infinite;
-    }}
+            color: #fde68a;
+            background: linear-gradient(90deg,
+                rgba(245,158,11,0.00),
+                rgba(245,158,11,0.12),
+                rgba(245,158,11,0.00));
+            border: 1px solid rgba(245,158,11,0.22);
+            border-radius: 14px;
+            padding: 10px 14px;
 
-    .ca-bg-nebula {{
-        position: fixed; top: 50%; left: 50%;
-        width: 900px; height: 700px;
-        background: radial-gradient(ellipse,
-            rgba(37,99,235,0.22) 0%, rgba(15,23,42,0.5) 45%, transparent 70%);
-        animation: nebula 8s ease-in-out infinite;
-        pointer-events: none; z-index: 0;
-    }}
+            text-shadow:
+              0 0 18px rgba(245,158,11,0.35),
+              0 0 38px rgba(180,83,9,0.25);
+            backdrop-filter: blur(8px);
+        }}
 
-    .ca-bg-nebula-warm {{
-        position: fixed; top: 52%; left: 52%;
-        width: 980px; height: 780px;
-        background: radial-gradient(ellipse,
-            rgba(251,191,36,0.22) 0%,
-            rgba(245,158,11,0.14) 30%,
-            rgba(180,83,9,0.10) 52%,
-            transparent 72%);
-        animation: nebulaWarm 9.5s ease-in-out infinite;
-        pointer-events: none; z-index: 0;
-        filter: blur(0.2px);
-    }}
+        .ca-particle {{ position: fixed; border-radius: 50%; animation: rise linear infinite; pointer-events: none; z-index: 0; }}
+        .ca-star {{ position: fixed; width: 2px; height: 2px; background: white; border-radius: 50%; animation: twinkle ease-in-out infinite; pointer-events: none; z-index: 0; }}
 
-    /* ✅ titolo più premium */
-    .ca-login-title {{
-        text-align:center;
-        margin-bottom: 14px;
-        z-index: 2;
-        position: relative;
+        div[data-testid="stTextInput"] > div > div {{
+            background: rgba(5, 15, 40, 0.9) !important;
+            border: 1px solid rgba(245,158,11,0.35) !important;
+            border-radius: 10px !important;
+        }}
+        div[data-testid="stTextInput"] > div > div:focus-within {{
+            border-color: rgba(245,158,11,0.75) !important;
+            box-shadow: 0 0 0 3px rgba(245,158,11,0.14) !important;
+        }}
+        div[data-testid="stTextInput"] input {{
+            color: #fff7ed !important;
+            font-size: 1rem !important;
+            letter-spacing: 3px !important;
+        }}
+        div[data-testid="stTextInput"] label {{ display: none !important; }}
 
-        font-size: 1.02rem;
-        font-weight: 900;
-        letter-spacing: 6px;
-        text-transform: uppercase;
+        .ca-logo-wrap {{ position: relative; display: inline-block; }}
+        .ca-logo-glow {{
+            position:absolute; inset:-44px; z-index:0;
+            border-radius:30px;
+            background: radial-gradient(circle at 50% 45%,
+                rgba(251,191,36,0.62) 0%,
+                rgba(245,158,11,0.40) 30%,
+                rgba(180,83,9,0.22) 55%,
+                rgba(2,11,24,0.0) 74%);
+            filter: blur(12px);
+        }}
+        .ca-logo-img {{
+            position: relative; z-index: 1;
+            transition: filter 0.4s ease;
+            cursor: default;
+        }}
+        .ca-logo-img:hover {{
+            filter: drop-shadow(0 0 18px rgba(251,191,36,0.55))
+                    drop-shadow(0 0 36px rgba(245,158,11,0.35))
+                    drop-shadow(0 0 55px rgba(59,130,246,0.15))
+                    brightness(1.08);
+        }}
 
-        color: #fde68a;
-        background: linear-gradient(90deg,
-            rgba(245,158,11,0.00),
-            rgba(245,158,11,0.12),
-            rgba(245,158,11,0.00));
-        border: 1px solid rgba(245,158,11,0.22);
-        border-radius: 14px;
-        padding: 10px 14px;
+        .ca-security {{
+            position: fixed; bottom: 0; left: 0; right: 0;
+            padding: 10px 20px 12px 20px;
+            background: rgba(2,11,24,0.94);
+            border-top: 1px solid rgba(59,130,246,0.22);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 -12px 30px rgba(0,0,0,0.45);
+            z-index: 9999;
+        }}
+        .ca-security-row {{
+            display: flex; justify-content: center; align-items: center;
+            gap: 18px; flex-wrap: wrap;
+        }}
+        .ca-security-item {{
+            color: rgba(226,232,240,0.92);
+            font-size: 0.72rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-shadow: 0 0 10px rgba(59,130,246,0.25);
+        }}
+        .ca-security-item svg {{
+            color: rgba(147,197,253,0.95);
+            filter: drop-shadow(0 0 10px rgba(59,130,246,0.25));
+        }}
+        .ca-sep {{
+            color: rgba(147,197,253,0.55);
+            font-size: 1rem;
+            text-shadow: 0 0 10px rgba(59,130,246,0.15);
+        }}
+        .ca-security-credits {{
+            margin-top: 7px;
+            text-align: center;
+            font-size: 0.72rem;
+            letter-spacing: 0.6px;
+            color: rgba(226,232,240,0.82);
+            text-shadow: 0 0 12px rgba(0,0,0,0.55);
+            background: rgba(255, 247, 237, 0.10);
+            border: 1px solid rgba(245,158,11,0.18);
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 12px;
+        }}
+        """,
+        style_id=LOGIN_STYLE_ID,
+        include_fa=False,
+    )
 
-        text-shadow:
-          0 0 18px rgba(245,158,11,0.35),
-          0 0 38px rgba(180,83,9,0.25);
-        backdrop-filter: blur(8px);
-    }}
+    st.markdown(
+        dedent(
+            """
+            <div class="ca-bg-grid"></div>
+            <div class="ca-bg-nebula"></div>
+            <div class="ca-bg-nebula-warm"></div>
 
-    .ca-particle {{ position: fixed; border-radius: 50%; animation: rise linear infinite; pointer-events: none; z-index: 0; }}
-    .ca-star {{ position: fixed; width: 2px; height: 2px; background: white; border-radius: 50%; animation: twinkle ease-in-out infinite; pointer-events: none; z-index: 0; }}
+            <div class="ca-star" style="top:8%;  left:15%; animation-duration:3s;   animation-delay:0s;"></div>
+            <div class="ca-star" style="top:22%; left:78%; animation-duration:4s;   animation-delay:1s;"></div>
+            <div class="ca-star" style="top:55%; left:92%; animation-duration:2.5s; animation-delay:0.5s;"></div>
+            <div class="ca-star" style="top:72%; left:5%;  animation-duration:5s;   animation-delay:2s;"></div>
+            <div class="ca-star" style="top:88%; left:45%; animation-duration:3.5s; animation-delay:1.5s;"></div>
+            <div class="ca-star" style="top:35%; left:32%; animation-duration:4.5s; animation-delay:0.8s;"></div>
+            <div class="ca-star" style="top:15%; left:62%; animation-duration:2.8s; animation-delay:2.5s;"></div>
+            <div class="ca-star" style="top:65%; left:55%; animation-duration:3.2s; animation-delay:0.3s;"></div>
 
-    div[data-testid="stTextInput"] > div > div {{
-        background: rgba(5, 15, 40, 0.9) !important;
-        border: 1px solid rgba(245,158,11,0.35) !important;
-        border-radius: 10px !important;
-    }}
-    div[data-testid="stTextInput"] > div > div:focus-within {{
-        border-color: rgba(245,158,11,0.75) !important;
-        box-shadow: 0 0 0 3px rgba(245,158,11,0.14) !important;
-    }}
-    div[data-testid="stTextInput"] input {{
-        color: #fff7ed !important;
-        font-size: 1rem !important;
-        letter-spacing: 3px !important;
-    }}
-    div[data-testid="stTextInput"] label {{ display: none !important; }}
-
-    /* ✅ logo con glow caldo e più luminoso dietro */
-    .ca-logo-wrap {{
-        position: relative;
-        display: inline-block;
-    }}
-    .ca-logo-glow {{
-        position:absolute;
-        inset:-44px;
-        z-index:0;
-        border-radius:30px;
-        background: radial-gradient(circle at 50% 45%,
-            rgba(251,191,36,0.62) 0%,
-            rgba(245,158,11,0.40) 30%,
-            rgba(180,83,9,0.22) 55%,
-            rgba(2,11,24,0.0) 74%);
-        filter: blur(12px);
-    }}
-    .ca-logo-img {{
-        position: relative;
-        z-index: 1;
-        transition: filter 0.4s ease;
-        cursor: default;
-    }}
-    .ca-logo-img:hover {{
-        filter: drop-shadow(0 0 18px rgba(251,191,36,0.55))
-                drop-shadow(0 0 36px rgba(245,158,11,0.35))
-                drop-shadow(0 0 55px rgba(59,130,246,0.15))
-                brightness(1.08);
-    }}
-
-    .ca-security {{
-        position: fixed; bottom: 0; left: 0; right: 0;
-        padding: 10px 20px 12px 20px;
-        background: rgba(2,11,24,0.94);
-        border-top: 1px solid rgba(59,130,246,0.22);
-        backdrop-filter: blur(10px);
-        box-shadow: 0 -12px 30px rgba(0,0,0,0.45);
-        z-index: 9999;
-    }}
-    .ca-security-row {{
-        display: flex; justify-content: center; align-items: center;
-        gap: 18px; flex-wrap: wrap;
-    }}
-    .ca-security-item {{
-        color: rgba(226,232,240,0.92);
-        font-size: 0.72rem;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        text-shadow: 0 0 10px rgba(59,130,246,0.25);
-    }}
-    .ca-security-item svg {{
-        color: rgba(147,197,253,0.95);
-        filter: drop-shadow(0 0 10px rgba(59,130,246,0.25));
-    }}
-    .ca-sep {{
-        color: rgba(147,197,253,0.55);
-        font-size: 1rem;
-        text-shadow: 0 0 10px rgba(59,130,246,0.15);
-    }}
-
-    /* ✅ credits: pill + contrasto (il tuo marrone sul nome resta inline) */
-    .ca-security-credits {{
-        margin-top: 7px;
-        text-align: center;
-        font-size: 0.72rem;
-        letter-spacing: 0.6px;
-        color: rgba(226,232,240,0.82);
-        text-shadow: 0 0 12px rgba(0,0,0,0.55);
-        background: rgba(255, 247, 237, 0.10);
-        border: 1px solid rgba(245,158,11,0.18);
-        display: inline-block;
-        padding: 6px 10px;
-        border-radius: 12px;
-    }}
-    </style>
-
-    <div class="ca-bg-grid"></div>
-    <div class="ca-bg-nebula"></div>
-    <div class="ca-bg-nebula-warm"></div>
-
-    <div class="ca-star" style="top:8%;  left:15%; animation-duration:3s;   animation-delay:0s;"></div>
-    <div class="ca-star" style="top:22%; left:78%; animation-duration:4s;   animation-delay:1s;"></div>
-    <div class="ca-star" style="top:55%; left:92%; animation-duration:2.5s; animation-delay:0.5s;"></div>
-    <div class="ca-star" style="top:72%; left:5%;  animation-duration:5s;   animation-delay:2s;"></div>
-    <div class="ca-star" style="top:88%; left:45%; animation-duration:3.5s; animation-delay:1.5s;"></div>
-    <div class="ca-star" style="top:35%; left:32%; animation-duration:4.5s; animation-delay:0.8s;"></div>
-    <div class="ca-star" style="top:15%; left:62%; animation-duration:2.8s; animation-delay:2.5s;"></div>
-    <div class="ca-star" style="top:65%; left:55%; animation-duration:3.2s; animation-delay:0.3s;"></div>
-
-    <div class="ca-particle" style="width:3px;height:3px;background:#3b82f6;left:10%;bottom:0;animation-duration:9s; animation-delay:0s;"></div>
-    <div class="ca-particle" style="width:2px;height:2px;background:#60a5fa;left:25%;bottom:0;animation-duration:12s;animation-delay:2s;"></div>
-    <div class="ca-particle" style="width:4px;height:4px;background:#ef4444;left:40%;bottom:0;animation-duration:8s; animation-delay:1s;"></div>
-    <div class="ca-particle" style="width:2px;height:2px;background:#22c55e;left:55%;bottom:0;animation-duration:11s;animation-delay:3s;"></div>
-    <div class="ca-particle" style="width:3px;height:3px;background:#3b82f6;left:70%;bottom:0;animation-duration:10s;animation-delay:0.5s;"></div>
-    <div class="ca-particle" style="width:2px;height:2px;background:#93c5fd;left:82%;bottom:0;animation-duration:13s;animation-delay:4s;"></div>
-    <div class="ca-particle" style="width:3px;height:3px;background:#60a5fa;left:92%;bottom:0;animation-duration:9s; animation-delay:1.5s;"></div>
-    """), unsafe_allow_html=True)
+            <div class="ca-particle" style="width:3px;height:3px;background:#3b82f6;left:10%;bottom:0;animation-duration:9s; animation-delay:0s;"></div>
+            <div class="ca-particle" style="width:2px;height:2px;background:#60a5fa;left:25%;bottom:0;animation-duration:12s;animation-delay:2s;"></div>
+            <div class="ca-particle" style="width:4px;height:4px;background:#ef4444;left:40%;bottom:0;animation-duration:8s; animation-delay:1s;"></div>
+            <div class="ca-particle" style="width:2px;height:2px;background:#22c55e;left:55%;bottom:0;animation-duration:11s;animation-delay:3s;"></div>
+            <div class="ca-particle" style="width:3px;height:3px;background:#3b82f6;left:70%;bottom:0;animation-duration:10s;animation-delay:0.5s;"></div>
+            <div class="ca-particle" style="width:2px;height:2px;background:#93c5fd;left:82%;bottom:0;animation-duration:13s;animation-delay:4s;"></div>
+            <div class="ca-particle" style="width:3px;height:3px;background:#60a5fa;left:92%;bottom:0;animation-duration:9s; animation-delay:1.5s;"></div>
+            """
+        ),
+        unsafe_allow_html=True,
+    )
 
     _, col, _ = st.columns([1, 1, 1])
     with col:
         st.markdown("<div style='height:18vh'></div>", unsafe_allow_html=True)
-
         st.markdown("<div class='ca-login-title'>ANALISI ESTATE 2026</div>", unsafe_allow_html=True)
 
         def _entered():
@@ -294,316 +317,320 @@ def check_password():
 
         if logo_b64:
             st.markdown(
-                dedent(f"""
-                <div style='text-align:center; margin-top:28px;'>
-                  <div class="ca-logo-wrap">
-                    <div class="ca-logo-glow"></div>
-                    <img class='ca-logo-img' src='data:image/png;base64,{logo_b64}'
-                         style='height:420px; width:auto; opacity:0.96;'/>
-                  </div>
-                </div>
-                """),
+                dedent(
+                    f"""
+                    <div style='text-align:center; margin-top:28px;'>
+                      <div class="ca-logo-wrap">
+                        <div class="ca-logo-glow"></div>
+                        <img class='ca-logo-img' src='data:image/png;base64,{logo_b64}'
+                             style='height:420px; width:auto; opacity:0.96;'/>
+                      </div>
+                    </div>
+                    """
+                ),
                 unsafe_allow_html=True,
             )
 
-    # ✅ footer fisso: FUORI dal container centrale
-    st.markdown(dedent(f"""
-    <div class='ca-security'>
-      <div class='ca-security-row'>
-        <span class='ca-security-item'>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <rect x="3" y="11" width="18" height="11" rx="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>Connessione cifrata
-        </span>
-        <span class='ca-sep'>·</span>
-        <span class='ca-security-item'>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>Sistema protetto
-        </span>
-        <span class='ca-sep'>·</span>
-        <span class='ca-security-item'>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 8v4l3 3"/>
-          </svg>Accesso riservato · Estate 2026
-        </span>
-      </div>
+    st.markdown(
+        dedent(
+            f"""
+            <div class='ca-security'>
+              <div class='ca-security-row'>
+                <span class='ca-security-item'>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>Connessione cifrata
+                </span>
+                <span class='ca-sep'>·</span>
+                <span class='ca-security-item'>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>Sistema protetto
+                </span>
+                <span class='ca-sep'>·</span>
+                <span class='ca-security-item'>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 8v4l3 3"/>
+                  </svg>Accesso riservato · Estate 2026
+                </span>
+              </div>
 
-      <div style="text-align:center;">
-        <div class="ca-security-credits">
-          Progettato e sviluppato da <b style='color:#78350f !important;'>Samuele Felici</b> · © {yr} — Tutti i diritti riservati
-        </div>
-      </div>
-    </div>
-    """), unsafe_allow_html=True)
+              <div style="text-align:center;">
+                <div class="ca-security-credits">
+                  Progettato e sviluppato da <b style='color:#78350f !important;'>Samuele Felici</b> · © {yr} — Tutti i diritti riservati
+                </div>
+              </div>
+            </div>
+            """
+        ),
+        unsafe_allow_html=True,
+    )
 
-    return False
 
-
-if not check_password():
+def ensure_auth_or_stop() -> None:
+    """Se non autenticato, renderizza login e ferma l'esecuzione."""
+    if st.session_state.get("password_correct"):
+        return
+    render_login()
     st.stop()
 
-# ✅ RESET CSS: riattiva UI Streamlit nel caso siano rimasti style del login/splash
-st.markdown("""
-<style>
-[data-testid="stSidebar"] { display: block !important; }
-[data-testid="stHeader"]  { display: block !important; }
-footer { display: block !important; }
 
-/* ripristina padding container se lo hai azzerato nel login/splash */
-.block-container { padding-top: 1.5rem !important; }
-</style>
-""", unsafe_allow_html=True)
+ensure_auth_or_stop()
+
+# ✅ Disattiva CSS del login (evita che resti nel DOM)
+inject_css("", style_id=LOGIN_STYLE_ID, include_fa=False)
 
 
 # --------------------------------------------------
-# SPLASH SCREEN (solo al primo accesso)
+# SPLASH SCREEN (solo al primo accesso) - con style_id
 # --------------------------------------------------
-if not st.session_state.get("splash_done"):
+def render_splash_once() -> None:
+    if st.session_state.get("splash_done"):
+        return
+
     st.session_state["splash_done"] = True
 
-    st.markdown("""
-<style>
-[data-testid="stSidebar"]{display:none!important}
-[data-testid="stHeader"]{display:none!important}
-footer{display:none!important}
-.block-container{padding:0!important;max-width:100%!important}
-.stApp{background:#020b18!important;overflow:hidden}
+    inject_css(
+        """
+        [data-testid="stSidebar"]{display:none!important}
+        [data-testid="stHeader"]{display:none!important}
+        footer{display:none!important}
+        .block-container{padding:0!important;max-width:100%!important}
+        .stApp{background:#020b18!important;overflow:hidden}
 
-/* ───────────────────────────────────────────────
-   Palette “calda premium” coerente col login
-   ─────────────────────────────────────────────── */
-:root{
-  --warm-1: rgba(251,191,36,0.70);  /* amber */
-  --warm-2: rgba(245,158,11,0.45);  /* orange */
-  --warm-3: rgba(180,83,9,0.28);    /* brown */
-  --cool-1: rgba(59,130,246,0.14);  /* blue soft */
-}
+        :root{
+          --warm-1: rgba(251,191,36,0.70);
+          --warm-2: rgba(245,158,11,0.45);
+          --warm-3: rgba(180,83,9,0.28);
+          --cool-1: rgba(59,130,246,0.14);
+        }
 
-/* sfondo: griglia + nebule calde */
-@keyframes gridPulse{0%,100%{opacity:0.05}50%{opacity:0.11}}
-@keyframes nebulaCool{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.22}50%{transform:translate(-50%,-50%) scale(1.08);opacity:.34}}
-@keyframes nebulaWarm{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.18}50%{transform:translate(-50%,-50%) scale(1.10);opacity:.30}}
+        @keyframes gridPulse{0%,100%{opacity:0.05}50%{opacity:0.11}}
+        @keyframes nebulaCool{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.22}50%{transform:translate(-50%,-50%) scale(1.08);opacity:.34}}
+        @keyframes nebulaWarm{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.18}50%{transform:translate(-50%,-50%) scale(1.10);opacity:.30}}
+        @keyframes corePulse{
+          0%,100%{
+            transform:translate(-50%,-50%) scale(1);
+            box-shadow:
+              0 0 28px 8px rgba(251,191,36,0.55),
+              0 0 70px 26px rgba(245,158,11,0.22),
+              0 0 120px 48px rgba(180,83,9,0.14);
+          }
+          50%{
+            transform:translate(-50%,-50%) scale(1.15);
+            box-shadow:
+              0 0 46px 16px rgba(251,191,36,0.75),
+              0 0 110px 44px rgba(245,158,11,0.30),
+              0 0 170px 70px rgba(180,83,9,0.18);
+          }
+        }
 
-@keyframes corePulse{
-  0%,100%{
-    transform:translate(-50%,-50%) scale(1);
-    box-shadow:
-      0 0 28px 8px rgba(251,191,36,0.55),
-      0 0 70px 26px rgba(245,158,11,0.22),
-      0 0 120px 48px rgba(180,83,9,0.14);
-  }
-  50%{
-    transform:translate(-50%,-50%) scale(1.15);
-    box-shadow:
-      0 0 46px 16px rgba(251,191,36,0.75),
-      0 0 110px 44px rgba(245,158,11,0.30),
-      0 0 170px 70px rgba(180,83,9,0.18);
-  }
-}
+        @keyframes spin1{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+        @keyframes spin2{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(-360deg)}}
+        @keyframes spin3{from{transform:translate(-50%,-50%) rotate(45deg)}to{transform:translate(-50%,-50%) rotate(405deg)}}
 
-@keyframes spin1{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
-@keyframes spin2{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(-360deg)}}
-@keyframes spin3{from{transform:translate(-50%,-50%) rotate(45deg)}to{transform:translate(-50%,-50%) rotate(405deg)}}
+        @keyframes orb1{from{transform:rotate(0deg) translateX(105px) rotate(0deg)}to{transform:rotate(360deg) translateX(105px) rotate(-360deg)}}
+        @keyframes orb2{from{transform:rotate(120deg) translateX(160px) rotate(-120deg)}to{transform:rotate(480deg) translateX(160px) rotate(-480deg)}}
+        @keyframes orb3{from{transform:rotate(240deg) translateX(215px) rotate(-240deg)}to{transform:rotate(600deg) translateX(215px) rotate(-600deg)}}
+        @keyframes orb4{from{transform:rotate(60deg) translateX(260px) rotate(-60deg)}to{transform:rotate(420deg) translateX(260px) rotate(-420deg)}}
+        @keyframes orb5{from{transform:rotate(180deg) translateX(105px) rotate(-180deg)}to{transform:rotate(540deg) translateX(105px) rotate(-540deg)}}
 
-@keyframes orb1{from{transform:rotate(0deg) translateX(105px) rotate(0deg)}to{transform:rotate(360deg) translateX(105px) rotate(-360deg)}}
-@keyframes orb2{from{transform:rotate(120deg) translateX(160px) rotate(-120deg)}to{transform:rotate(480deg) translateX(160px) rotate(-480deg)}}
-@keyframes orb3{from{transform:rotate(240deg) translateX(215px) rotate(-240deg)}to{transform:rotate(600deg) translateX(215px) rotate(-600deg)}}
-@keyframes orb4{from{transform:rotate(60deg) translateX(260px) rotate(-60deg)}to{transform:rotate(420deg) translateX(260px) rotate(-420deg)}}
-@keyframes orb5{from{transform:rotate(180deg) translateX(105px) rotate(-180deg)}to{transform:rotate(540deg) translateX(105px) rotate(-540deg)}}
+        @keyframes blobFloat{0%,100%{transform:translate(-50%,-50%) scale(1) rotate(0deg);opacity:.40}50%{transform:translate(-50%,-50%) scale(1.18) rotate(120deg);opacity:.62}}
+        @keyframes fadeOutSplash{0%,80%{opacity:1}100%{opacity:0}}
+        @keyframes progressFill{from{width:0%}to{width:100%}}
+        @keyframes textPulse{0%,100%{opacity:.55;letter-spacing:4px}50%{opacity:1;letter-spacing:6px}}
+        @keyframes starTwinkle{0%,100%{opacity:.10}50%{opacity:.65}}
 
-@keyframes blobFloat{0%,100%{transform:translate(-50%,-50%) scale(1) rotate(0deg);opacity:.40}50%{transform:translate(-50%,-50%) scale(1.18) rotate(120deg);opacity:.62}}
-@keyframes fadeOutSplash{0%,80%{opacity:1}100%{opacity:0}}
-@keyframes progressFill{from{width:0%}to{width:100%}}
-@keyframes textPulse{0%,100%{opacity:.55;letter-spacing:4px}50%{opacity:1;letter-spacing:6px}}
-@keyframes starTwinkle{0%,100%{opacity:.10}50%{opacity:.65}}
+        .sp-wrap{
+          position:fixed;inset:0;z-index:99999;
+          background:#020b18;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;
+          animation:fadeOutSplash 3.6s ease forwards;
+          overflow:hidden;
+        }
+        .sp-wrap::before{
+          content:'';
+          position:absolute;inset:0;
+          background-image:
+            linear-gradient(rgba(59,130,246,0.05) 1px,transparent 1px),
+            linear-gradient(90deg,rgba(59,130,246,0.05) 1px,transparent 1px);
+          background-size:48px 48px;
+          animation:gridPulse 4s ease-in-out infinite;
+        }
 
-.sp-wrap{
-  position:fixed;inset:0;z-index:99999;
-  background:#020b18;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  animation:fadeOutSplash 3.6s ease forwards;
-  overflow:hidden;
-}
-.sp-wrap::before{
-  content:'';
-  position:absolute;inset:0;
-  background-image:
-    linear-gradient(rgba(59,130,246,0.05) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(59,130,246,0.05) 1px,transparent 1px);
-  background-size:48px 48px;
-  animation:gridPulse 4s ease-in-out infinite;
-}
+        .sp-nebula-cool{
+          position:absolute; top:48%; left:50%;
+          width:900px; height:700px;
+          background:radial-gradient(ellipse,
+            rgba(59,130,246,0.18) 0%,
+            rgba(15,23,42,0.55) 45%,
+            transparent 72%);
+          animation:nebulaCool 8.5s ease-in-out infinite;
+          pointer-events:none;
+          filter:blur(.3px);
+        }
+        .sp-nebula-warm{
+          position:absolute; top:52%; left:52%;
+          width:980px; height:780px;
+          background:radial-gradient(ellipse,
+            rgba(251,191,36,0.22) 0%,
+            rgba(245,158,11,0.14) 30%,
+            rgba(180,83,9,0.10) 52%,
+            transparent 74%);
+          animation:nebulaWarm 9.5s ease-in-out infinite;
+          pointer-events:none;
+          filter:blur(.2px);
+        }
 
-/* nebule background */
-.sp-nebula-cool{
-  position:absolute; top:48%; left:50%;
-  width:900px; height:700px;
-  background:radial-gradient(ellipse,
-    rgba(59,130,246,0.18) 0%,
-    rgba(15,23,42,0.55) 45%,
-    transparent 72%);
-  animation:nebulaCool 8.5s ease-in-out infinite;
-  pointer-events:none;
-  filter:blur(.3px);
-}
-.sp-nebula-warm{
-  position:absolute; top:52%; left:52%;
-  width:980px; height:780px;
-  background:radial-gradient(ellipse,
-    rgba(251,191,36,0.22) 0%,
-    rgba(245,158,11,0.14) 30%,
-    rgba(180,83,9,0.10) 52%,
-    transparent 74%);
-  animation:nebulaWarm 9.5s ease-in-out infinite;
-  pointer-events:none;
-  filter:blur(.2px);
-}
+        .sp-star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;animation:starTwinkle ease-in-out infinite}
+        .sp-arena{position:relative;width:580px;height:580px;flex-shrink:0;z-index:2}
+        .sp-ring{position:absolute;top:50%;left:50%;border-radius:50%}
 
-.sp-star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;animation:starTwinkle ease-in-out infinite}
-.sp-arena{position:relative;width:580px;height:580px;flex-shrink:0;z-index:2}
-.sp-ring{position:absolute;top:50%;left:50%;border-radius:50%}
+        .sp-ring-1{
+          width:520px;height:520px;margin:-260px 0 0 -260px;
+          border:1.5px solid transparent;
+          border-top:1.5px solid rgba(245,158,11,0.70);
+          border-right:1.5px solid rgba(245,158,11,0.18);
+          animation:spin1 3s linear infinite;
+        }
+        .sp-ring-2{
+          width:410px;height:410px;margin:-205px 0 0 -205px;
+          border:1px solid transparent;
+          border-top:1px solid rgba(251,191,36,0.55);
+          border-left:1px solid rgba(251,191,36,0.20);
+          animation:spin2 2s linear infinite;
+        }
+        .sp-ring-3{
+          width:310px;height:310px;margin:-155px 0 0 -155px;
+          border:2px solid transparent;
+          border-bottom:2px solid rgba(180,83,9,0.55);
+          border-right:2px solid rgba(180,83,9,0.22);
+          animation:spin3 4s linear infinite;
+        }
+        .sp-ring-4{
+          width:220px;height:220px;margin:-110px 0 0 -110px;
+          border:1px solid transparent;
+          border-top:1px solid rgba(245,158,11,0.35);
+          animation:spin1 1.5s linear infinite reverse;
+        }
 
-/* ring con accenti caldi */
-.sp-ring-1{
-  width:520px;height:520px;margin:-260px 0 0 -260px;
-  border:1.5px solid transparent;
-  border-top:1.5px solid rgba(245,158,11,0.70);
-  border-right:1.5px solid rgba(245,158,11,0.18);
-  animation:spin1 3s linear infinite;
-}
-.sp-ring-2{
-  width:410px;height:410px;margin:-205px 0 0 -205px;
-  border:1px solid transparent;
-  border-top:1px solid rgba(251,191,36,0.55);
-  border-left:1px solid rgba(251,191,36,0.20);
-  animation:spin2 2s linear infinite;
-}
-.sp-ring-3{
-  width:310px;height:310px;margin:-155px 0 0 -155px;
-  border:2px solid transparent;
-  border-bottom:2px solid rgba(180,83,9,0.55);
-  border-right:2px solid rgba(180,83,9,0.22);
-  animation:spin3 4s linear infinite;
-}
-.sp-ring-4{
-  width:220px;height:220px;margin:-110px 0 0 -110px;
-  border:1px solid transparent;
-  border-top:1px solid rgba(245,158,11,0.35);
-  animation:spin1 1.5s linear infinite reverse;
-}
+        .sp-blob{position:absolute;top:50%;left:50%;border-radius:50%;pointer-events:none}
+        .sp-blob-1{
+          width:420px;height:240px;margin:-120px 0 0 -210px;
+          background:radial-gradient(ellipse, rgba(251,191,36,0.16) 0%, transparent 72%);
+          animation:blobFloat 5s ease-in-out infinite;
+        }
 
-/* blob caldo */
-.sp-blob{position:absolute;top:50%;left:50%;border-radius:50%;pointer-events:none}
-.sp-blob-1{
-  width:420px;height:240px;margin:-120px 0 0 -210px;
-  background:radial-gradient(ellipse, rgba(251,191,36,0.16) 0%, transparent 72%);
-  animation:blobFloat 5s ease-in-out infinite;
-}
+        .sp-core{
+          position:absolute;top:50%;left:50%;
+          width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;
+          background:radial-gradient(circle,
+            #ffffff 0%,
+            #fff7ed 28%,
+            rgba(251,191,36,0.95) 55%,
+            rgba(245,158,11,0.90) 75%,
+            rgba(180,83,9,0.95) 100%);
+          animation:corePulse 2s ease-in-out infinite;
+          z-index:20;
+        }
 
-/* core caldo */
-.sp-core{
-  position:absolute;top:50%;left:50%;
-  width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;
-  background:radial-gradient(circle,
-    #ffffff 0%,
-    #fff7ed 28%,
-    rgba(251,191,36,0.95) 55%,
-    rgba(245,158,11,0.90) 75%,
-    rgba(180,83,9,0.95) 100%);
-  animation:corePulse 2s ease-in-out infinite;
-  z-index:20;
-}
+        .sp-orb{position:absolute;top:50%;left:50%;border-radius:50%}
+        .sp-orb-1{width:10px;height:10px;margin:-5px 0 0 -5px;background:#fbbf24;box-shadow:0 0 12px 4px rgba(251,191,36,0.95);animation:orb1 2.2s linear infinite}
+        .sp-orb-2{width:8px;height:8px;margin:-4px 0 0 -4px;background:#f59e0b;box-shadow:0 0 10px 3px rgba(245,158,11,0.9);animation:orb2 3.3s linear infinite}
+        .sp-orb-3{width:7px;height:7px;margin:-3.5px 0 0 -3.5px;background:#b45309;box-shadow:0 0 10px 3px rgba(180,83,9,0.85);animation:orb3 4.4s linear infinite}
+        .sp-orb-4{width:6px;height:6px;margin:-3px 0 0 -3px;background:#60a5fa;box-shadow:0 0 9px 3px rgba(96,165,250,0.60);animation:orb4 5.5s linear infinite}
+        .sp-orb-5{width:9px;height:9px;margin:-4.5px 0 0 -4.5px;background:#fde68a;box-shadow:0 0 10px 3px rgba(253,230,138,0.85);animation:orb5 1.8s linear infinite}
 
-/* orb: più coerenti (caldi + 1 accento blu) */
-.sp-orb{position:absolute;top:50%;left:50%;border-radius:50%}
-.sp-orb-1{width:10px;height:10px;margin:-5px 0 0 -5px;background:#fbbf24;box-shadow:0 0 12px 4px rgba(251,191,36,0.95);animation:orb1 2.2s linear infinite}
-.sp-orb-2{width:8px;height:8px;margin:-4px 0 0 -4px;background:#f59e0b;box-shadow:0 0 10px 3px rgba(245,158,11,0.9);animation:orb2 3.3s linear infinite}
-.sp-orb-3{width:7px;height:7px;margin:-3.5px 0 0 -3.5px;background:#b45309;box-shadow:0 0 10px 3px rgba(180,83,9,0.85);animation:orb3 4.4s linear infinite}
-.sp-orb-4{width:6px;height:6px;margin:-3px 0 0 -3px;background:#60a5fa;box-shadow:0 0 9px 3px rgba(96,165,250,0.60);animation:orb4 5.5s linear infinite}
-.sp-orb-5{width:9px;height:9px;margin:-4.5px 0 0 -4.5px;background:#fde68a;box-shadow:0 0 10px 3px rgba(253,230,138,0.85);animation:orb5 1.8s linear infinite}
-
-/* testo + progress bar (caldi) */
-.sp-text{margin-top:-30px;text-align:center;z-index:10}
-.sp-label{
-  color:#fde68a;
-  font-size:0.70rem;
-  letter-spacing:4px;
-  text-transform:uppercase;
-  margin:0 0 14px;
-  animation:textPulse 2s ease-in-out infinite;
-  text-shadow:0 0 16px rgba(245,158,11,0.28),0 0 34px rgba(180,83,9,0.20);
-}
-.sp-bar-wrap{
-  width:240px;height:2px;
-  background:rgba(245,158,11,0.12);
-  border-radius:2px;
-  margin:0 auto;
-  overflow:hidden;
-  border:1px solid rgba(245,158,11,0.14);
-}
-.sp-bar{
-  height:100%;
-  background:linear-gradient(90deg, rgba(180,83,9,0.85), rgba(251,191,36,0.95), rgba(180,83,9,0.85));
-  background-size:200% 100%;
-  animation:progressFill 3.2s cubic-bezier(.4,0,.2,1) forwards;
-  box-shadow:0 0 10px rgba(251,191,36,0.55);
-}
-</style>
-
-<div class="sp-wrap">
-  <div class="sp-nebula-cool"></div>
-  <div class="sp-nebula-warm"></div>
-
-  <div class="sp-star" style="top:7%;left:12%;animation-duration:2.8s;animation-delay:0s"></div>
-  <div class="sp-star" style="top:18%;left:81%;animation-duration:4s;animation-delay:.8s"></div>
-  <div class="sp-star" style="top:72%;left:91%;animation-duration:3.2s;animation-delay:.3s"></div>
-  <div class="sp-star" style="top:85%;left:7%;animation-duration:5s;animation-delay:1.5s"></div>
-
-  <div class="sp-arena">
-    <div class="sp-blob sp-blob-1"></div>
-    <div class="sp-ring sp-ring-1"></div>
-    <div class="sp-ring sp-ring-2"></div>
-    <div class="sp-ring sp-ring-3"></div>
-    <div class="sp-ring sp-ring-4"></div>
-    <div class="sp-orb sp-orb-1"></div>
-    <div class="sp-orb sp-orb-2"></div>
-    <div class="sp-orb sp-orb-3"></div>
-    <div class="sp-orb sp-orb-4"></div>
-    <div class="sp-orb sp-orb-5"></div>
-    <div class="sp-core"></div>
-  </div>
-
-  <div class="sp-text">
-    <p class="sp-label">Inizializzazione sistema</p>
-    <div class="sp-bar-wrap"><div class="sp-bar"></div></div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-    import time
-    time.sleep(3.4)
-    st.rerun()
-
-from textwrap import dedent
-def inject_css(css: str, style_id: str = "ca-global-style", include_fa: bool = True):
-    css = dedent(css).strip()
-
-    fa = (
-        '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">'
-        if include_fa else ""
+        .sp-text{margin-top:-30px;text-align:center;z-index:10}
+        .sp-label{
+          color:#fde68a;
+          font-size:0.70rem;
+          letter-spacing:4px;
+          text-transform:uppercase;
+          margin:0 0 14px;
+          animation:textPulse 2s ease-in-out infinite;
+          text-shadow:0 0 16px rgba(245,158,11,0.28),0 0 34px rgba(180,83,9,0.20);
+        }
+        .sp-bar-wrap{
+          width:240px;height:2px;
+          background:rgba(245,158,11,0.12);
+          border-radius:2px;
+          margin:0 auto;
+          overflow:hidden;
+          border:1px solid rgba(245,158,11,0.14);
+        }
+        .sp-bar{
+          height:100%;
+          background:linear-gradient(90deg, rgba(180,83,9,0.85), rgba(251,191,36,0.95), rgba(180,83,9,0.85));
+          background-size:200% 100%;
+          animation:progressFill 3.2s cubic-bezier(.4,0,.2,1) forwards;
+          box-shadow:0 0 10px rgba(251,191,36,0.55);
+        }
+        """,
+        style_id=SPLASH_STYLE_ID,
+        include_fa=False,
     )
 
     st.markdown(
-        f"""{fa}
-<style id="{style_id}">
-{css}
-</style>
-""",
+        """
+        <div class="sp-wrap">
+          <div class="sp-nebula-cool"></div>
+          <div class="sp-nebula-warm"></div>
+
+          <div class="sp-star" style="top:7%;left:12%;animation-duration:2.8s;animation-delay:0s"></div>
+          <div class="sp-star" style="top:18%;left:81%;animation-duration:4s;animation-delay:.8s"></div>
+          <div class="sp-star" style="top:72%;left:91%;animation-duration:3.2s;animation-delay:.3s"></div>
+          <div class="sp-star" style="top:85%;left:7%;animation-duration:5s;animation-delay:1.5s"></div>
+
+          <div class="sp-arena">
+            <div class="sp-blob sp-blob-1"></div>
+            <div class="sp-ring sp-ring-1"></div>
+            <div class="sp-ring sp-ring-2"></div>
+            <div class="sp-ring sp-ring-3"></div>
+            <div class="sp-ring sp-ring-4"></div>
+            <div class="sp-orb sp-orb-1"></div>
+            <div class="sp-orb sp-orb-2"></div>
+            <div class="sp-orb sp-orb-3"></div>
+            <div class="sp-orb sp-orb-4"></div>
+            <div class="sp-orb sp-orb-5"></div>
+            <div class="sp-core"></div>
+          </div>
+
+          <div class="sp-text">
+            <p class="sp-label">Inizializzazione sistema</p>
+            <div class="sp-bar-wrap"><div class="sp-bar"></div></div>
+          </div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
+
+    time.sleep(3.4)
+
+    # ✅ IMPORTANTISSIMO: svuota lo style splash prima del rerun (niente CSS zombie)
+    inject_css("", style_id=SPLASH_STYLE_ID, include_fa=False)
+    st.rerun()
+
+
+render_splash_once()
+
+# ✅ EXTRA safety: assicurati che sidebar/header siano visibili dopo splash
+inject_css(
+    """
+    [data-testid="stSidebar"] { display: block !important; }
+    [data-testid="stHeader"]  { display: block !important; }
+    footer { display: block !important; }
+    .block-container { padding-top: 1.5rem !important; }
+    """,
+    style_id="ca-ui-reset",
+    include_fa=False,
+)
+
+# --------------------------------------------------
+# Da qui in poi: dashboard vera e propria
+# --------------------------------------------------
 
 # --------------------------------------------------
 # CSS DASHBOARD (warm premium, coerente)  ✅ UNA SOLA VOLTA
