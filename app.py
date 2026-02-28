@@ -5,6 +5,7 @@
 
 import os
 import base64
+import time
 from datetime import datetime
 
 import streamlit as st
@@ -322,43 +323,37 @@ ensure_auth_or_stop()
 
 
 # --------------------------------------------------
-# ✅ FIX SPLASH — logica robusta anti-loop infinito
+# SPLASH — logica timestamp pura, ZERO JS, ZERO query_params
 #
-# Problema precedente: st.query_params.clear() in alcune
-# versioni di Streamlit non rimuove effettivamente i params
-# prima che la pagina venga ri-renderizzata, causando un loop.
+# Su Streamlit Cloud, JS che modifica window.location.href
+# causa una navigazione che DISTRUGGE la sessione WebSocket.
+# Il query param arriva su una sessione nuova (splash_done
+# non è in session_state) → loop infinito garantito.
 #
-# Soluzione: usiamo session_state come unica fonte di verità.
-# Il query param serve SOLO a triggerare il rerun dal browser.
-# Appena lo leggiamo, settiamo session_state["splash_done"]=True
-# e NON facciamo altro: il rerun successivo partirà già con
-# session_state["splash_done"]=True e salterà lo splash.
+# Soluzione: timestamp in session_state + polling con rerun.
+# Loop controllato: si interrompe quando elapsed >= SPLASH_DURATION.
+# time.sleep(0.1) limita a ~10 rerun/sec durante lo splash.
 # --------------------------------------------------
+SPLASH_DURATION = 3.5  # secondi
+
+
 def render_splash_once() -> None:
-    # ── Caso 1: splash già completato in questa sessione ──────────────
+    # Già completato → esci subito
     if st.session_state.get("splash_done"):
         return
 
-    # ── Caso 2: il JS ha segnalato che i 3.5s sono passati ───────────
-    # Leggiamo il param UNA SOLA VOLTA e settiamo session_state.
-    # Non chiamiamo st.query_params.clear() perché su alcune versioni
-    # di Streamlit causa un rerun aggiuntivo che ri-entra nel loop.
-    try:
-        splash_param = st.query_params.get("splash_done", None)
-    except Exception:
-        splash_param = None
+    # Prima visita → registra timestamp
+    if "splash_start" not in st.session_state:
+        st.session_state["splash_start"] = time.time()
 
-    if splash_param == "1":
+    # Tempo scaduto → vai alla dashboard
+    elapsed = time.time() - st.session_state["splash_start"]
+    if elapsed >= SPLASH_DURATION:
         st.session_state["splash_done"] = True
-        # Pulizia param: usiamo pop() che è più affidabile di clear()
-        try:
-            st.query_params.pop("splash_done")
-        except Exception:
-            pass
-        # Forziamo il rerun per caricare la dashboard pulita
         st.rerun()
+        return
 
-    # ── Caso 3: prima visita → mostra splash + JS timer ───────────────
+    # Mostra splash HTML/CSS
     inject_css(
         """
         [data-testid="stSidebar"]{display:none!important}
@@ -396,7 +391,7 @@ def render_splash_once() -> None:
           overflow:hidden;
         }
         .sp-wrap::before{
-          content:'';position:absolute;inset:0;
+          content:\'\';position:absolute;inset:0;
           background-image:
             linear-gradient(rgba(59,130,246,0.05) 1px,transparent 1px),
             linear-gradient(90deg,rgba(59,130,246,0.05) 1px,transparent 1px);
@@ -478,20 +473,11 @@ def render_splash_once() -> None:
             <div class="sp-bar-wrap"><div class="sp-bar"></div></div>
           </div>
         </div>
-        <script>
-          (function() {
-            // Evita di girare se il param è già presente (sicurezza anti-loop)
-            if (new URL(window.location.href).searchParams.get('splash_done') === '1') return;
-            setTimeout(function() {
-              var url = new URL(window.location.href);
-              url.searchParams.set('splash_done', '1');
-              window.location.href = url.toString();
-            }, 3500);
-          })();
-        </script>
     """, unsafe_allow_html=True)
 
-    st.stop()
+    # Polling: aspetta 100ms, poi rerun per ricontrollare il timer
+    time.sleep(0.1)
+    st.rerun()
 
 
 render_splash_once()
