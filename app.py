@@ -345,6 +345,18 @@ def check_password():
 if not check_password():
     st.stop()
 
+# ✅ RESET CSS: riattiva UI Streamlit nel caso siano rimasti style del login/splash
+st.markdown("""
+<style>
+[data-testid="stSidebar"] { display: block !important; }
+[data-testid="stHeader"]  { display: block !important; }
+footer { display: block !important; }
+
+/* ripristina padding container se lo hai azzerato nel login/splash */
+.block-container { padding-top: 1.5rem !important; }
+</style>
+""", unsafe_allow_html=True)
+
 
 # --------------------------------------------------
 # SPLASH SCREEN (solo al primo accesso)
