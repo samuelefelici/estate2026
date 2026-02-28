@@ -971,19 +971,32 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 
 
 # ══════════════════════════════════════════════════
-# TAB 1 — OVERVIEW
+# TAB 1 — OVERVIEW  (logica corretta)
 # ══════════════════════════════════════════════════
 with tab1:
     if len(df_filtered) > 0:
-        st.markdown("#### <i class='fas fa-users'></i> Copertura del Servizio — Persone per Giorno", unsafe_allow_html=True)
+        st.markdown(
+            "#### <i class='fas fa-users'></i> Copertura del Servizio — Persone per Giorno",
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            "<p style='color:#93c5fd;font-size:0.9rem;'>"
+            "Partendo dall'<b>organico in forza</b> si sottraggono prima le <b>assenze nominali</b> "
+            "(R, FP, PS, AP, PADm, NF dal roster) e le <b>assenze statistiche</b> (medie storiche), "
+            "ottenendo i <b>Disponibili Netti</b>. Sottraendo i <b>Turni richiesti</b> si ottiene il "
+            "<span style='color:#22c55e;'>Buffer</span> / "
+            "<span style='color:#ef4444;'>Deficit</span>.</p>",
+            unsafe_allow_html=True
+        )
 
         if len(df_copertura_filtered) > 0:
             cop = df_copertura_filtered.groupby("giorno").agg(
-                persone_in_forza=("persone_in_forza","sum"),
-                turni_richiesti=("turni_richiesti","sum"),
-                assenze_nominali=("assenze_nominali","sum"),
-                assenze_statistiche=("assenze_statistiche","sum"),
-                gap=("gap","sum"),
+                persone_in_forza     = ("persone_in_forza",     "sum"),
+                assenze_nominali     = ("assenze_nominali",     "sum"),
+                assenze_statistiche  = ("assenze_statistiche",  "sum"),
+                turni_richiesti      = ("turni_richiesti",      "sum"),
+                disponibili_netti    = ("disponibili_netti",    "sum"),
+                gap                  = ("gap",                  "sum"),
             ).reset_index()
 
             giorni_ok      = int((cop["gap"] >= 0).sum())
@@ -992,55 +1005,165 @@ with tab1:
             gap_min        = cop["gap"].min()
 
             kc1, kc2, kc3, kc4 = st.columns(4)
-            with kc1: st.metric("👥 Persone in forza (media/gg)", f"{cop['persone_in_forza'].mean():.0f}")
-            with kc2: st.metric("✅ Giorni in copertura", f"{giorni_ok}")
-            with kc3: st.metric("🚨 Giorni in deficit", f"{giorni_allarme}")
-            with kc4: st.metric("📉 Gap medio/giorno", f"{gap_medio:.1f}", delta=f"min: {gap_min:.0f}")
+            with kc1: st.metric("👥 Organico medio/gg",    f"{cop['persone_in_forza'].mean():.0f}")
+            with kc2: st.metric("✅ Giorni in copertura",  f"{giorni_ok}")
+            with kc3: st.metric("🚨 Giorni in deficit",    f"{giorni_allarme}")
+            with kc4: st.metric("📉 Gap medio/giorno",     f"{gap_medio:.1f}",
+                                delta=f"min: {gap_min:.0f}")
 
-            fig_cop = make_subplots(rows=2, cols=1, row_heights=[0.70, 0.30], shared_xaxes=True,
+            # ── GRAFICO PRINCIPALE ──────────────────────────────────────────
+            fig_cop = make_subplots(
+                rows=2, cols=1,
+                row_heights=[0.70, 0.30],
+                shared_xaxes=True,
                 vertical_spacing=0.05,
-                subplot_titles=("Come vengono utilizzate le persone in forza ogni giorno",
-                                "Buffer disponibile (▲) / Deficit (▼)"))
+                subplot_titles=(
+                    "Composizione organico: assenze + disponibili + turni richiesti",
+                    "Buffer disponibile (▲) / Deficit (▼)"
+                ),
+            )
 
-            fig_cop.add_trace(go.Bar(x=cop["giorno"], y=cop["turni_richiesti"], name="Turni da coprire", marker_color="rgba(100,116,139,0.80)", hovertemplate="<b>Turni da coprire</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"), row=1, col=1)
-            fig_cop.add_trace(go.Bar(x=cop["giorno"], y=cop["assenze_nominali"], name="Assenze roster", marker_color="rgba(71,85,105,0.85)", hovertemplate="<b>Assenze roster</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"), row=1, col=1)
-            fig_cop.add_trace(go.Bar(x=cop["giorno"], y=cop["assenze_statistiche"], name="Assenze storiche", marker_color="rgba(51,65,85,0.90)", hovertemplate="<b>Assenze storiche</b><br>%{x|%d/%m/%Y}: <b>%{y:.0f}</b><extra></extra>"), row=1, col=1)
+            # ── ROW 1: barre impilate che sommano a persone_in_forza ────────
+            # Strato 1 — Assenze nominali (R, FP, PS …)
+            fig_cop.add_trace(go.Bar(
+                x=cop["giorno"], y=cop["assenze_nominali"],
+                name="Assenze roster (R/FP/PS…)",
+                marker_color="rgba(71,85,105,0.85)",
+                hovertemplate="<b>Assenze roster</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+            ), row=1, col=1)
 
-            buf_colors = ["rgba(34,197,94,0.85)" if g >= 0 else "rgba(220,38,38,0.90)" for g in cop["gap"]]
-            fig_cop.add_trace(go.Bar(x=cop["giorno"], y=cop["gap"], name="Buffer / Deficit",
-                marker=dict(color=buf_colors, line=dict(width=0.8, color="rgba(255,255,255,0.15)")),
-                text=[f"<b>{int(g)}</b>" if g < 0 else "" for g in cop["gap"]],
-                textposition="outside", textfont=dict(size=11, color="#fca5a5"),
-                hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Buffer/Deficit: <b>%{y}</b><extra></extra>"), row=1, col=1)
-            fig_cop.add_trace(go.Scatter(x=cop["giorno"], y=cop["persone_in_forza"], name="Persone in forza",
-                mode="lines", line=dict(color="#94a3b8", width=2, dash="dot"),
-                hovertemplate="<b>Persone in forza</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"), row=1, col=1)
+            # Strato 2 — Assenze statistiche (medie storiche)
+            fig_cop.add_trace(go.Bar(
+                x=cop["giorno"], y=cop["assenze_statistiche"],
+                name="Assenze storiche (infort./malattie…)",
+                marker_color="rgba(51,65,85,0.90)",
+                hovertemplate="<b>Assenze storiche</b><br>%{x|%d/%m/%Y}: <b>%{y:.0f}</b><extra></extra>"
+            ), row=1, col=1)
 
-            gap_colors = ["rgba(34,197,94,0.85)" if g >= 0 else "rgba(220,38,38,0.90)" for g in cop["gap"]]
-            fig_cop.add_trace(go.Bar(x=cop["giorno"], y=cop["gap"], name="Gap",
-                marker=dict(color=gap_colors), text=[f"<b>{int(g)}</b>" for g in cop["gap"]],
-                textposition="outside", textfont=dict(size=9, color="#cbd5e1"), showlegend=False,
-                hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Gap: <b>%{y}</b><extra></extra>"), row=2, col=1)
+            # Strato 3 — Turni richiesti (quota di disponibili che va in servizio)
+            fig_cop.add_trace(go.Bar(
+                x=cop["giorno"], y=cop["turni_richiesti"],
+                name="Turni richiesti",
+                marker_color="rgba(100,116,139,0.80)",
+                hovertemplate="<b>Turni richiesti</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+            ), row=1, col=1)
 
-            fig_cop.add_hline(y=0, line_dash="solid", line_color="rgba(255,255,255,0.5)", line_width=1.5, row=2, col=1)
+            # Strato 4 — Buffer (verde) o Deficit (rosso): la parte residua
+            #   Se gap > 0: barra verde = persone disponibili non impegnate
+            #   Se gap < 0: non si vede strato positivo, il deficit viene mostrato sotto
+            buf_colors = [
+                "rgba(34,197,94,0.75)" if g >= 0 else "rgba(220,38,38,0.0)"
+                for g in cop["gap"]
+            ]
+            fig_cop.add_trace(go.Bar(
+                x=cop["giorno"],
+                y=cop["gap"].clip(lower=0),   # solo la parte positiva (buffer)
+                name="Buffer disponibile",
+                marker=dict(color="rgba(34,197,94,0.75)", line=dict(width=0.5, color="rgba(255,255,255,0.15)")),
+                hovertemplate="<b>Buffer</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+            ), row=1, col=1)
+
+            # Linea organico totale — deve toccare la cima di tutte le barre quando gap >= 0
+            fig_cop.add_trace(go.Scatter(
+                x=cop["giorno"], y=cop["persone_in_forza"],
+                name="Organico totale",
+                mode="lines",
+                line=dict(color="#94a3b8", width=2, dash="dot"),
+                hovertemplate="<b>Organico totale</b><br>%{x|%d/%m/%Y}: <b>%{y}</b><extra></extra>"
+            ), row=1, col=1)
+
+            # ── ROW 2: barre gap (verde/rosso) ─────────────────────────────
+            gap_colors = [
+                "rgba(34,197,94,0.85)" if g >= 0 else "rgba(220,38,38,0.90)"
+                for g in cop["gap"]
+            ]
+            fig_cop.add_trace(go.Bar(
+                x=cop["giorno"], y=cop["gap"],
+                name="Gap",
+                marker=dict(color=gap_colors, line=dict(width=0.5, color="rgba(255,255,255,0.1)")),
+                text=[f"<b>{int(g)}</b>" for g in cop["gap"]],
+                textposition="outside",
+                textfont=dict(size=9, color="#cbd5e1"),
+                showlegend=False,
+                hovertemplate=(
+                    "<b>%{x|%d/%m/%Y}</b><br>"
+                    "Gap: <b>%{y}</b><br>"
+                    "<i>🟢 buffer · 🔴 DEFICIT</i><extra></extra>"
+                )
+            ), row=2, col=1)
+
+            fig_cop.add_hline(y=0, line_dash="solid",
+                              line_color="rgba(255,255,255,0.5)", line_width=1.5, row=2, col=1)
             if soglia_gap < 0:
-                fig_cop.add_hline(y=soglia_gap, line_dash="dash", line_color="#dc2626", line_width=2,
-                    annotation_text=f"Soglia critica ({soglia_gap})", annotation_font=dict(color="#dc2626", size=11),
-                    annotation_position="top left", row=2, col=1)
+                fig_cop.add_hline(
+                    y=soglia_gap, line_dash="dash", line_color="#dc2626", line_width=2,
+                    annotation_text=f"Soglia critica ({soglia_gap})",
+                    annotation_font=dict(color="#dc2626", size=11),
+                    annotation_position="top left",
+                    row=2, col=1
+                )
 
-            fig_cop.update_layout(barmode="stack", height=700, hovermode="x unified", showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=11),
-                    bgcolor="rgba(15,23,42,0.7)", bordercolor="rgba(96,165,250,0.2)", borderwidth=1),
-                plot_bgcolor="rgba(15,23,42,0.85)", paper_bgcolor="rgba(15,23,42,0.0)",
-                font=dict(color="#cbd5e1", family="Arial, sans-serif"), margin=dict(t=60, b=20, l=10, r=10))
-            fig_cop.update_xaxes(tickformat="%d/%m", tickangle=-45, gridcolor="rgba(96,165,250,0.08)", linecolor="rgba(96,165,250,0.2)", showgrid=True)
-            fig_cop.update_yaxes(gridcolor="rgba(96,165,250,0.08)", linecolor="rgba(96,165,250,0.2)", zeroline=False)
+            fig_cop.update_layout(
+                barmode="stack",
+                height=700,
+                hovermode="x unified",
+                showlegend=True,
+                legend=dict(
+                    orientation="h", yanchor="bottom", y=1.02,
+                    xanchor="right", x=1, font=dict(size=11),
+                    bgcolor="rgba(15,23,42,0.7)",
+                    bordercolor="rgba(96,165,250,0.2)", borderwidth=1,
+                ),
+                plot_bgcolor="rgba(15,23,42,0.85)",
+                paper_bgcolor="rgba(15,23,42,0.0)",
+                font=dict(color="#cbd5e1", family="Arial, sans-serif"),
+                margin=dict(t=60, b=20, l=10, r=10),
+            )
+            fig_cop.update_xaxes(
+                tickformat="%d/%m", tickangle=-45,
+                gridcolor="rgba(96,165,250,0.08)",
+                linecolor="rgba(96,165,250,0.2)",
+                showgrid=True,
+            )
+            fig_cop.update_yaxes(
+                gridcolor="rgba(96,165,250,0.08)",
+                linecolor="rgba(96,165,250,0.2)",
+                zeroline=False,
+            )
             fig_cop.update_yaxes(title_text="Persone", row=1, col=1)
             fig_cop.update_yaxes(title_text="Gap", row=2, col=1)
+
             st.plotly_chart(fig_cop, use_container_width=True, key="pc_main_cop")
+
+            # ── LEGENDA TESTUALE ────────────────────────────────────────────
+            c1, c2, c3, c4, c5 = st.columns(5)
+            cards = [
+                (c1, "#475569", "rgba(71,85,105,0.15)",  "▪ Assenze roster",
+                 "R, FP, PS, AP, PADm, NF — codici turno dal roster"),
+                (c2, "#334155", "rgba(51,65,85,0.20)",   "▪ Assenze storiche",
+                 "Infortuni, malattie, L.104, permessi (medie anni prec.)"),
+                (c3, "#64748b", "rgba(100,116,139,0.12)","▪ Turni richiesti",
+                 "Turni di servizio che devono essere garantiti"),
+                (c4, "#22c55e", "rgba(34,197,94,0.15)",  "🟢 Buffer",
+                 "Persone disponibili non impegnate in turno"),
+                (c5, "#94a3b8", "rgba(148,163,184,0.05)","— Organico totale",
+                 "Linea tratteggiata = COUNT(DISTINCT matricola)"),
+            ]
+            for col, border, bg, title, desc in cards:
+                with col:
+                    st.markdown(
+                        f"<div style='background:{bg};border-left:4px solid {border};"
+                        f"border-radius:8px;padding:10px 12px;min-height:72px;'>"
+                        f"<span style='color:#e2e8f0;font-size:0.78rem;font-weight:700;'>{title}</span><br>"
+                        f"<span style='color:#94a3b8;font-size:0.75rem;'>{desc}</span>"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+
         else:
             st.info("Dati copertura non disponibili per i filtri selezionati.")
 
+        # ── EXPANDER: Gauge + Pie ───────────────────────────────────────────
         with st.expander("📊 Statistiche aggiuntive — Gauge Gap % e Distribuzione Assenze"):
             eg1, eg2 = st.columns(2)
             with eg1:
@@ -1060,36 +1183,54 @@ with tab1:
                             {'range': [  0,  10], 'color': 'rgba(34,197,94,0.3)'},
                             {'range': [ 10,  20], 'color': 'rgba(16,185,129,0.3)'},
                         ],
-                        'threshold': {'line': {'color': "#ef4444", 'width': 4}, 'thickness': 0.75,
-                            'value': (soglia_gap / media_turni_giorno * 100) if media_turni_giorno > 0 else 0}
+                        'threshold': {
+                            'line': {'color': "#ef4444", 'width': 4}, 'thickness': 0.75,
+                            'value': (soglia_gap / media_turni_giorno * 100) if media_turni_giorno > 0 else 0
+                        }
                     }
                 ))
-                fig_gauge.update_layout(height=280, paper_bgcolor='rgba(15,23,42,0.5)', margin=dict(l=20, r=20, t=40, b=20))
+                fig_gauge.update_layout(height=280, paper_bgcolor='rgba(15,23,42,0.5)',
+                                        margin=dict(l=20, r=20, t=40, b=20))
                 st.plotly_chart(fig_gauge, use_container_width=True, key="pc_2")
             with eg2:
                 st.markdown("##### Distribuzione Assenze Storiche")
                 ab = pd.DataFrame({
                     'Tipo': ['Infortuni','Malattie','L.104','Congedi','Permessi','Altro'],
-                    'Totale': [int(df_filtered[c].sum()) for c in ['infortuni','malattie','legge_104','congedo_parentale','permessi_vari','altre_assenze']]
+                    'Totale': [int(df_filtered[c].sum()) for c in
+                               ['infortuni','malattie','legge_104','congedo_parentale','permessi_vari','altre_assenze']]
                 })
                 ab = ab[ab['Totale'] > 0]
                 if len(ab) > 0:
-                    fig_pie = go.Figure(go.Pie(labels=ab['Tipo'], values=ab['Totale'], hole=.5,
+                    fig_pie = go.Figure(go.Pie(
+                        labels=ab['Tipo'], values=ab['Totale'], hole=.5,
                         marker=dict(colors=['#64748b','#78716c','#6b7280','#71717a','#737373','#57534e']),
-                        textinfo='label+percent'))
-                    fig_pie.update_layout(height=280, showlegend=False, paper_bgcolor='rgba(15,23,42,0.5)', margin=dict(l=0,r=0,t=0,b=0))
+                        textinfo='label+percent'
+                    ))
+                    fig_pie.update_layout(height=280, showlegend=False,
+                                          paper_bgcolor='rgba(15,23,42,0.5)',
+                                          margin=dict(l=0, r=0, t=0, b=0))
                     st.plotly_chart(fig_pie, use_container_width=True, key="pc_3")
 
+        # ── HEATMAP ─────────────────────────────────────────────────────────
         st.markdown("---")
-        st.markdown("#### <i class='fas fa-fire'></i> Heatmap Criticità per Deposito", unsafe_allow_html=True)
-        pivot_gap = df_filtered.pivot_table(values='gap', index='deposito',
-            columns=df_filtered['giorno'].dt.strftime('%d/%m'), aggfunc='sum', fill_value=0)
+        st.markdown("#### <i class='fas fa-fire'></i> Heatmap Criticità per Deposito",
+                    unsafe_allow_html=True)
+        pivot_gap = df_filtered.pivot_table(
+            values='gap', index='deposito',
+            columns=df_filtered['giorno'].dt.strftime('%d/%m'),
+            aggfunc='sum', fill_value=0
+        )
         if len(pivot_gap) > 0:
             fig_heat = go.Figure(go.Heatmap(
                 z=pivot_gap.values, x=pivot_gap.columns, y=pivot_gap.index,
-                colorscale=[[0,'#7f1d1d'],[0.3,'#dc2626'],[0.45,'#fb923c'],[0.5,'#fef3c7'],[0.55,'#86efac'],[0.7,'#22c55e'],[1,'#14532d']],
-                zmid=0, text=pivot_gap.values, texttemplate='%{text:.0f}', colorbar=dict(title="Gap")))
-            fig_heat.update_layout(height=max(300, len(pivot_gap)*40), **PLOTLY_TEMPLATE)
+                colorscale=[
+                    [0,   '#7f1d1d'], [0.3, '#dc2626'], [0.45,'#fb923c'],
+                    [0.5, '#fef3c7'], [0.55,'#86efac'], [0.7, '#22c55e'], [1, '#14532d']
+                ],
+                zmid=0, text=pivot_gap.values, texttemplate='%{text:.0f}',
+                colorbar=dict(title="Gap")
+            ))
+            fig_heat.update_layout(height=max(300, len(pivot_gap) * 40), **PLOTLY_TEMPLATE)
             st.plotly_chart(fig_heat, use_container_width=True, key="pc_4")
     else:
         st.info("Nessun dato per i filtri selezionati.")
