@@ -577,7 +577,258 @@ footer{display:none!important}
     time.sleep(3.4)
     st.rerun()
 
+from textwrap import dedent
 
+def inject_css(css: str, style_id: str = "ca-global-style"):
+    """
+    Inietta CSS in modo robusto (niente markdown-code-block, niente duplicati).
+    """
+    css = dedent(css).strip()
+
+    st.markdown(
+        f"""
+<style id="{style_id}">
+{css}
+</style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# --------------------------------------------------
+# CSS DASHBOARD (warm premium, coerente)
+# --------------------------------------------------
+inject_css(r"""
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css');
+
+:root{
+  --bg0:#020b18;
+  --bg1:#0b1226;
+  --bg2:#0f172a;
+
+  --blue:#60a5fa;
+  --blue2:#93c5fd;
+
+  --amber:#fbbf24;
+  --amber2:#f59e0b;
+  --brown:#b45309;
+  --sand:#fde68a;
+
+  --text:#cbd5e1;
+  --muted:#94a3b8;
+}
+
+/* SFONDO APP */
+.stApp{
+  background:
+    radial-gradient(1100px 780px at 52% 48%, rgba(245,158,11,0.14) 0%, rgba(2,11,24,0.0) 62%),
+    radial-gradient(900px 680px at 50% 45%, rgba(59,130,246,0.12) 0%, rgba(2,11,24,0.0) 60%),
+    linear-gradient(135deg, var(--bg1) 0%, #0b1630 45%, var(--bg2) 100%);
+  background-attachment: fixed;
+}
+
+/* TITOLI */
+h1{
+  color: var(--sand) !important;
+  text-shadow: 0 0 18px rgba(245,158,11,0.28), 0 0 34px rgba(180,83,9,0.20);
+  font-weight: 900 !important;
+  letter-spacing: 2px;
+  font-size: 3rem !important;
+  margin-bottom: 1rem !important;
+}
+h2{
+  color: var(--blue2) !important;
+  text-shadow: 0 0 12px rgba(96,165,250,0.22);
+  font-weight: 800 !important;
+  margin-top: 30px !important;
+  letter-spacing: .5px;
+}
+h3{
+  color: #e2e8f0 !important;
+  text-shadow: 0 0 10px rgba(0,0,0,0.35);
+  font-weight: 700 !important;
+}
+
+/* KPI / METRIC */
+[data-testid="stMetricValue"]{
+  font-size: 2.55rem !important;
+  font-weight: 900 !important;
+  color: var(--sand) !important;
+  text-shadow: 0 0 18px rgba(245,158,11,0.22), 0 0 30px rgba(180,83,9,0.15);
+}
+[data-testid="stMetricLabel"]{
+  font-size: 0.98rem !important;
+  font-weight: 700 !important;
+  color: var(--blue2) !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+[data-testid="metric-container"]{
+  background: linear-gradient(135deg, rgba(15,23,42,0.72) 0%, rgba(2,11,24,0.72) 100%);
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(245,158,11,0.14);
+  transition: all 0.28s ease;
+}
+[data-testid="metric-container"]:hover{
+  transform: translateY(-5px);
+  box-shadow: 0 14px 44px rgba(245,158,11,0.10), 0 10px 34px rgba(0,0,0,0.55);
+  border: 1px solid rgba(245,158,11,0.26);
+}
+
+/* TABS */
+.stTabs [data-baseweb="tab-list"]{
+  gap: 8px;
+  background: rgba(15,23,42,0.45);
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(96,165,250,0.10);
+  backdrop-filter: blur(10px);
+}
+.stTabs [data-baseweb="tab"]{
+  background: rgba(2,11,24,0.35);
+  border-radius: 10px;
+  color: var(--blue2);
+  font-weight: 700;
+  padding: 12px 22px;
+  border: 1px solid rgba(245,158,11,0.10);
+  transition: all 0.25s ease;
+}
+.stTabs [data-baseweb="tab"]:hover{
+  border-color: rgba(245,158,11,0.26);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.35);
+}
+.stTabs [aria-selected="true"]{
+  background: linear-gradient(135deg, rgba(245,158,11,0.92) 0%, rgba(180,83,9,0.88) 100%);
+  color: #0b1226;
+  border: 1px solid rgba(253,230,138,0.35);
+  text-shadow: none;
+}
+
+/* SIDEBAR */
+[data-testid="stSidebar"]{
+  background: linear-gradient(180deg, rgba(2,11,24,0.95) 0%, rgba(15,23,42,0.92) 100%);
+  border-right: 2px solid rgba(245,158,11,0.14);
+}
+[data-testid="stSidebar"] *{ color: #e2e8f0 !important; }
+
+hr{
+  border-color: rgba(245,158,11,0.14) !important;
+  margin: 30px 0 !important;
+}
+
+/* ALERTS */
+.alert-critical{
+  background: linear-gradient(135deg, rgba(239,68,68,0.18) 0%, rgba(220,38,38,0.26) 100%);
+  padding: 20px; border-radius: 16px;
+  color: #fecaca; font-weight: 800; font-size: 1.06rem;
+  margin: 20px 0;
+  box-shadow: 0 10px 34px rgba(239,68,68,0.22);
+  border: 1px solid rgba(239,68,68,0.35);
+  border-left: 6px solid #ef4444;
+}
+.alert-warning{
+  background: linear-gradient(135deg, rgba(251,191,36,0.14) 0%, rgba(245,158,11,0.22) 100%);
+  padding: 20px; border-radius: 16px;
+  color: #ffedd5; font-weight: 800; font-size: 1.06rem;
+  margin: 20px 0;
+  box-shadow: 0 10px 34px rgba(245,158,11,0.14);
+  border: 1px solid rgba(245,158,11,0.28);
+  border-left: 6px solid #f59e0b;
+}
+.alert-success{
+  background: linear-gradient(135deg, rgba(34,197,94,0.16) 0%, rgba(22,163,74,0.22) 100%);
+  padding: 20px; border-radius: 16px;
+  color: #bbf7d0; font-weight: 800; font-size: 1.06rem;
+  margin: 20px 0;
+  box-shadow: 0 10px 34px rgba(34,197,94,0.14);
+  border: 1px solid rgba(34,197,94,0.28);
+  border-left: 6px solid #22c55e;
+}
+.alert-info{
+  background: linear-gradient(135deg, rgba(59,130,246,0.14) 0%, rgba(37,99,235,0.20) 100%);
+  padding: 20px; border-radius: 16px;
+  color: #bfdbfe; font-weight: 800; font-size: 1.06rem;
+  margin: 20px 0;
+  box-shadow: 0 10px 34px rgba(59,130,246,0.14);
+  border: 1px solid rgba(59,130,246,0.26);
+  border-left: 6px solid #3b82f6;
+}
+
+/* PLOTLY / DATAFRAME / EXPANDER */
+.js-plotly-plot{
+  border-radius: 16px;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.55);
+  background: rgba(15,23,42,0.45) !important;
+  border: 1px solid rgba(245,158,11,0.12);
+}
+[data-testid="stDataFrame"]{
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.55);
+  border: 1px solid rgba(96,165,250,0.12);
+}
+[data-testid="stExpander"]{
+  background: rgba(15,23,42,0.45);
+  border: 1px solid rgba(245,158,11,0.12);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+p, span, label{ color: var(--text) !important; }
+
+input, select, textarea{
+  background: rgba(2,11,24,0.55) !important;
+  color: #fff7ed !important;
+  border: 1px solid rgba(245,158,11,0.20) !important;
+  border-radius: 10px !important;
+}
+
+/* BUTTONS */
+button{
+  background: linear-gradient(135deg, rgba(245,158,11,0.95) 0%, rgba(180,83,9,0.92) 100%) !important;
+  color: #0b1226 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  font-weight: 800 !important;
+  transition: all 0.25s ease !important;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.35);
+}
+button:hover{
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 34px rgba(245,158,11,0.16), 0 10px 26px rgba(0,0,0,0.35) !important;
+  filter: brightness(1.05);
+}
+
+.stDownloadButton button{
+  background: linear-gradient(135deg, rgba(34,197,94,0.92) 0%, rgba(22,163,74,0.90) 100%) !important;
+  color: #052e16 !important;
+}
+
+/* CARDS CUSTOM */
+.info-box{
+  background: rgba(15,23,42,0.50);
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(245,158,11,0.12);
+  backdrop-filter: blur(10px);
+}
+.insight-card{
+  background: linear-gradient(135deg, rgba(245,158,11,0.10) 0%, rgba(59,130,246,0.10) 100%);
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(245,158,11,0.18);
+  margin: 15px 0;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.40);
+}
+.insight-card h4{
+  color: var(--sand) !important;
+  margin-bottom: 10px !important;
+  text-shadow: 0 0 16px rgba(245,158,11,0.22);
+}
+""")
 # --------------------------------------------------
 # CSS DASHBOARD (warm premium, coerente)
 # --------------------------------------------------
