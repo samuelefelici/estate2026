@@ -1140,53 +1140,50 @@ with tab2:
 
             # Colore del totale finale: verde se >= 0, rosso se negativo
             colore_gap = "#22c55e" if gap_medio_wf >= 0 else "#ef4444"
-            colore_disp = "#3b82f6"  # blu per il subtotale intermedio
-
-            colors = [
-                "#22c55e",     # Autisti (absolute)
-                "#ef4444",     # Assenze (relative negativa)
-                colore_disp,   # Disponibili Netti (total)
-                "#ef4444",     # Turni (relative negativa)
-                colore_gap,    # Gap finale (total)
-            ]
 
             fig_wf = go.Figure(go.Waterfall(
                 orientation="v",
-                measure=["absolute", "relative", "total", "relative", "total"],
+                measure=["absolute", "relative", "relative", "total"],
                 x=[
                     "👥 Autisti in Forza",
                     "➖ Assenze Previste",
-                    "= Disponibili Netti",
                     "➖ Turni da Coprire",
                     "= Gap / Buffer",
                 ],
-                y=[autisti_medio, -assenze_medie, 0, -turni_medi, 0],
+                y=[autisti_medio, -assenze_medie, -turni_medi, 0],
                 text=[
                     f"<b>{autisti_medio:.0f}</b>",
                     f"<b>−{assenze_medie:.0f}</b>",
-                    f"<b>{disponibili_medi:.0f}</b>",
                     f"<b>−{turni_medi:.0f}</b>",
                     f"<b>{'+' if gap_medio_wf >= 0 else ''}{gap_medio_wf:.0f}</b>",
                 ],
                 textposition="outside",
                 textfont=dict(size=13, color="#e2e8f0"),
-                marker={
-                    "color": colors,
-                    "line": {"color": "rgba(255,255,255,0.25)", "width": 1}
-                },
-                connector={
-                    "line": {
-                        "color": "rgba(96,165,250,0.4)",
-                        "width": 1.5,
-                        "dash": "dot"
-                    }
-                },
+                connector={"line": {"color": "rgba(96,165,250,0.4)", "width": 1.5, "dash": "dot"}},
+                increasing={"marker": {"color": "#22c55e", "line": {"color": "#16a34a", "width": 1}}},
+                decreasing={"marker": {"color": "#ef4444", "line": {"color": "#dc2626", "width": 1}}},
+                totals={"marker": {"color": colore_gap, "line": {"color": "rgba(255,255,255,0.3)", "width": 1}}},
                 hovertemplate=(
                     "<b>%{x}</b><br>"
                     "Valore: <b>%{y:.1f}</b> persone<br>"
                     "<extra></extra>"
                 ),
             ))
+
+            # Annotazione: Disponibili Netti (subtotale dopo assenze)
+            fig_wf.add_annotation(
+                x="➖ Assenze Previste",
+                y=disponibili_medi,
+                text=f"Disponibili Netti: <b>{disponibili_medi:.0f}</b>",
+                showarrow=True,
+                arrowhead=2,
+                ax=0, ay=-35,
+                font=dict(size=12, color="#93c5fd"),
+                bgcolor="rgba(15,23,42,0.85)",
+                bordercolor="rgba(59,130,246,0.6)",
+                borderwidth=1,
+                borderpad=6,
+            )
 
             # Linea di riferimento a zero
             fig_wf.add_hline(
