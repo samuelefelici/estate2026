@@ -199,13 +199,41 @@ def check_password():
     .login-credits b {{ color: #78350f; }}
     </style>
 
-    <!-- Subtle floating dots -->
-    <div class="login-dot" style="width:4px;height:4px;background:#d4b896;left:10%;bottom:0;animation-duration:12s;"></div>
-    <div class="login-dot" style="width:3px;height:3px;background:#c9a96e;left:30%;bottom:0;animation-duration:15s;animation-delay:2s;"></div>
-    <div class="login-dot" style="width:3px;height:3px;background:#e8d5be;left:55%;bottom:0;animation-duration:13s;animation-delay:1s;"></div>
-    <div class="login-dot" style="width:4px;height:4px;background:#c9a96e;left:78%;bottom:0;animation-duration:14s;animation-delay:3s;"></div>
-    <div class="login-dot" style="width:3px;height:3px;background:#d4b896;left:92%;bottom:0;animation-duration:11s;animation-delay:1.5s;"></div>
-    """, unsafe_allow_html=True)
+st.markdown(f"""
+<style>
+/* === LOGIN PAGE === */
+[data-testid="stSidebar"] {{ display: none !important; }}
+footer {{ display: none !important; }}
+.block-container {{ padding-top: 0 !important; max-width: 100% !important; }}
+
+html, body, .stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stAppViewBlockContainer"],
+.main, .block-container {{
+    background: linear-gradient(160deg, #fffcf5 0%, #faf3e6 40%, #f7efe0 70%, #fdf8f0 100%) !important;
+}}
+
+/* Dots senza HTML: solo background layers */
+@keyframes bgFloat {{
+  0%   {{ background-position: 10% 110%, 30% 110%, 55% 110%, 78% 110%, 92% 110%; opacity: 0; }}
+  15%  {{ opacity: .45; }}
+  85%  {{ opacity: .2; }}
+  100% {{ background-position: 10% -20%, 30% -25%, 55% -18%, 78% -22%, 92% -28%; opacity: 0; }}
+}}
+
+[data-testid="stAppViewContainer"] {{
+  background-image:
+    radial-gradient(circle, #d4b896 0 2px, transparent 3px),
+    radial-gradient(circle, #c9a96e 0 1.5px, transparent 2.5px),
+    radial-gradient(circle, #e8d5be 0 1.5px, transparent 2.5px),
+    radial-gradient(circle, #c9a96e 0 2px, transparent 3px),
+    radial-gradient(circle, #d4b896 0 1.5px, transparent 2.5px);
+  background-repeat: no-repeat;
+  animation: bgFloat 14s linear infinite;
+}}
+
+</style>
+""", unsafe_allow_html=True)
 
     _, col, _ = st.columns([1, 1, 1])
     with col:
