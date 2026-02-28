@@ -51,6 +51,8 @@ def get_colore_deposito(dep: str) -> str:
 # --------------------------------------------------
 # LOGIN
 # --------------------------------------------------
+from textwrap import dedent  # ✅ serve per evitare problemi di indentazione nelle stringhe multilinea
+
 def check_password():
     if st.session_state.get("password_correct"):
         return True
@@ -65,7 +67,7 @@ def check_password():
 
     yr = datetime.now().year
 
-    st.markdown(f"""
+    st.markdown(dedent(f"""
     <style>
     [data-testid="stSidebar"] {{ display: none !important; }}
     [data-testid="stHeader"]  {{ display: none !important; }}
@@ -76,7 +78,7 @@ def check_password():
     @keyframes gridPulse {{ 0%, 100% {{ opacity: 0.07; }} 50% {{ opacity: 0.16; }} }}
     @keyframes nebula {{
         0%, 100% {{ transform: translate(-50%, -50%) scale(1);   opacity: 0.55; }}
-        50%       {{ transform: translate(-50%, -50%) scale(1.1); opacity: 0.80; }}
+        50%      {{ transform: translate(-50%, -50%) scale(1.1); opacity: 0.80; }}
     }}
 
     /* ✅ seconda nebula calda e leggera */
@@ -202,14 +204,17 @@ def check_password():
 
     .ca-security {{
         position: fixed; bottom: 0; left: 0; right: 0;
-        padding: 10px 20px 12px 20px;  /* più spazio per i credits */
+        padding: 10px 20px 12px 20px;
         background: rgba(2,11,24,0.94);
         border-top: 1px solid rgba(59,130,246,0.22);
         backdrop-filter: blur(10px);
         box-shadow: 0 -12px 30px rgba(0,0,0,0.45);
         z-index: 9999;
     }}
-    .ca-security-row {{ display: flex; justify-content: center; align-items: center; gap: 18px; flex-wrap: wrap; }}
+    .ca-security-row {{
+        display: flex; justify-content: center; align-items: center;
+        gap: 18px; flex-wrap: wrap;
+    }}
     .ca-security-item {{
         color: rgba(226,232,240,0.92);
         font-size: 0.72rem;
@@ -220,10 +225,17 @@ def check_password():
         gap: 8px;
         text-shadow: 0 0 10px rgba(59,130,246,0.25);
     }}
-    .ca-security-item svg {{ color: rgba(147,197,253,0.95); filter: drop-shadow(0 0 10px rgba(59,130,246,0.25)); }}
-    .ca-sep {{ color: rgba(147,197,253,0.55); font-size: 1rem; text-shadow: 0 0 10px rgba(59,130,246,0.15); }}
+    .ca-security-item svg {{
+        color: rgba(147,197,253,0.95);
+        filter: drop-shadow(0 0 10px rgba(59,130,246,0.25));
+    }}
+    .ca-sep {{
+        color: rgba(147,197,253,0.55);
+        font-size: 1rem;
+        text-shadow: 0 0 10px rgba(59,130,246,0.15);
+    }}
 
-    /* ✅ credits VISIBILI: pill + contrasto, ma mantiene il tuo marrone sul nome */
+    /* ✅ credits: pill + contrasto (il tuo marrone sul nome resta inline) */
     .ca-security-credits {{
         margin-top: 7px;
         text-align: center;
@@ -259,13 +271,12 @@ def check_password():
     <div class="ca-particle" style="width:3px;height:3px;background:#3b82f6;left:70%;bottom:0;animation-duration:10s;animation-delay:0.5s;"></div>
     <div class="ca-particle" style="width:2px;height:2px;background:#93c5fd;left:82%;bottom:0;animation-duration:13s;animation-delay:4s;"></div>
     <div class="ca-particle" style="width:3px;height:3px;background:#60a5fa;left:92%;bottom:0;animation-duration:9s; animation-delay:1.5s;"></div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     _, col, _ = st.columns([1, 1, 1])
     with col:
         st.markdown("<div style='height:18vh'></div>", unsafe_allow_html=True)
 
-        # Titolo sopra input
         st.markdown("<div class='ca-login-title'>ANALISI ESTATE 2026</div>", unsafe_allow_html=True)
 
         def _entered():
@@ -285,7 +296,7 @@ def check_password():
 
         if logo_b64:
             st.markdown(
-                f"""
+                dedent(f"""
                 <div style='text-align:center; margin-top:28px;'>
                   <div class="ca-logo-wrap">
                     <div class="ca-logo-glow"></div>
@@ -293,41 +304,42 @@ def check_password():
                          style='height:420px; width:auto; opacity:0.96;'/>
                   </div>
                 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
 
-        st.markdown(dedent(f"""
-        <div class='ca-security'>
-          <div class='ca-security-row'>
-            <span class='ca-security-item'>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <rect x="3" y="11" width="18" height="11" rx="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>Connessione cifrata
-            </span>
-            <span class='ca-sep'>·</span>
-            <span class='ca-security-item'>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>Sistema protetto
-            </span>
-            <span class='ca-sep'>·</span>
-            <span class='ca-security-item'>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 8v4l3 3"/>
-              </svg>Accesso riservato · Estate 2026
-            </span>
-          </div>
+    # ✅ footer fisso: FUORI dal container centrale
+    st.markdown(dedent(f"""
+    <div class='ca-security'>
+      <div class='ca-security-row'>
+        <span class='ca-security-item'>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>Connessione cifrata
+        </span>
+        <span class='ca-sep'>·</span>
+        <span class='ca-security-item'>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>Sistema protetto
+        </span>
+        <span class='ca-sep'>·</span>
+        <span class='ca-security-item'>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 8v4l3 3"/>
+          </svg>Accesso riservato · Estate 2026
+        </span>
+      </div>
 
-          <div style="text-align:center;">
-            <div class="ca-security-credits">
-              Progettato e sviluppato da <b style='color:#78350f !important;'>Samuele Felici</b> · © {yr} — Tutti i diritti riservati
-            </div>
-          </div>
+      <div style="text-align:center;">
+        <div class="ca-security-credits">
+          Progettato e sviluppato da <b style='color:#78350f !important;'>Samuele Felici</b> · © {yr} — Tutti i diritti riservati
         </div>
-        """), unsafe_allow_html=True)
+      </div>
+    </div>
+    """), unsafe_allow_html=True)
 
     return False
 
