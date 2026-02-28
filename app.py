@@ -575,18 +575,8 @@ footer{display:none!important}
     time.sleep(3.4)
     st.rerun()
 
-if not st.session_state.get("splash_done"):
-    ph = st.empty()
-    with ph:
-        st.markdown("""...SPLASH HTML...""", unsafe_allow_html=True)
-        import time; time.sleep(3.4)
-    st.session_state["splash_done"] = True
-    ph.empty()
-    st.rerun()
-
 from textwrap import dedent
 def inject_css(css: str, style_id: str = "ca-global-style", include_fa: bool = True):
-    st.write("DEBUG inject_css called")  # temporaneo
     css = dedent(css).strip()
 
     fa = (
