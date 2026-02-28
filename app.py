@@ -649,32 +649,90 @@ def load_turni_calendario() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=600)
+@st.cache_data(ttl=600)
 def load_copertura() -> pd.DataFrame:
     query = """
         WITH
+        -- 1. Organico totale per giorno/deposito (DISTINCT matricola)
         forza AS (
-            SELECT r.data AS giorno, r.deposito,
-                COUNT(DISTINCT r.matricola) AS persone_in_forza,
-                COUNT(*) FILTER (WHERE r.turno IS NOT NULL AND TRIM(r.turno) <> '') AS assenze_nominali
-            FROM roster r GROUP BY r.data, r.deposito
+            SELECT
+                r.data                                  AS giorno,
+                r.deposito,
+                COUNT(DISTINCT r.matricola)             AS persone_in_forza
+            FROM roster r
+            GROUP BY r.data, r.deposito
         ),
+
+        -- 2. Assenze nominali dal roster:
+        --    solo i codici che tolgono il dipendente dalla disponibilità
+        --    (R=Riposo, FP=Ferie Programmate, PS=Permesso Sindacale,
+        --     AP=Aspettativa, PADm=Congedo Straord., NF=Non in Forza)
+        assenze_nom AS (
+            SELECT
+                r.data                                  AS giorno,
+                r.deposito,
+                COUNT(*) FILTER (
+                    WHERE r.turno IN ('R','FP','PS','AP','PADm','NF')
+                )                                       AS assenze_nominali
+            FROM roster r
+            GROUP BY r.data, r.deposito
+        ),
+
+        -- 3. Assenze statistiche dalla tabella assenze (medie storiche)
+        --    JOIN su calendar per espandere daytype → date reali
+        assenze_stat AS (
+            SELECT
+                c.data                                  AS giorno,
+                a.deposito,
+                ROUND(
+                    COALESCE(a.infortuni,         0) +
+                    COALESCE(a.malattie,           0) +
+                    COALESCE(a.legge_104,          0) +
+                    COALESCE(a.altre_assenze,      0) +
+                    COALESCE(a.congedo_parentale,  0) +
+                    COALESCE(a.permessi_vari,      0)
+                )::int                                  AS assenze_statistiche
+            FROM assenze a
+            JOIN calendar c ON c.daytype = a.daytype
+        ),
+
+        -- 4. Turni richiesti dal servizio (turni_giornalieri)
         turni AS (
-            SELECT data AS giorno, deposito, COUNT(*) AS turni_richiesti
-            FROM turni_giornalieri GROUP BY data, deposito
-        ),
-        ass AS (
-            SELECT c.data AS giorno, a.deposito,
-                ROUND(COALESCE(a.infortuni,0)+COALESCE(a.malattie,0)+COALESCE(a.legge_104,0)+COALESCE(a.altre_assenze,0)+COALESCE(a.congedo_parentale,0)+COALESCE(a.permessi_vari,0))::int AS assenze_statistiche
-            FROM assenze a JOIN calendar c ON c.daytype = a.daytype
+            SELECT
+                data                                    AS giorno,
+                deposito,
+                COUNT(*)                                AS turni_richiesti
+            FROM turni_giornalieri
+            GROUP BY data, deposito
         )
-        SELECT f.giorno, f.deposito, f.persone_in_forza,
-            COALESCE(t.turni_richiesti,0) AS turni_richiesti,
-            f.assenze_nominali,
-            COALESCE(a.assenze_statistiche,0) AS assenze_statistiche,
-            f.persone_in_forza - COALESCE(t.turni_richiesti,0) - f.assenze_nominali - COALESCE(a.assenze_statistiche,0) AS gap
+
+        SELECT
+            f.giorno,
+            f.deposito,
+
+            -- Organico
+            f.persone_in_forza,
+
+            -- Sottrazioni
+            COALESCE(an.assenze_nominali,    0)         AS assenze_nominali,
+            COALESCE(ast.assenze_statistiche, 0)        AS assenze_statistiche,
+            COALESCE(t.turni_richiesti,       0)        AS turni_richiesti,
+
+            -- Disponibili netti = organico - assenze nominali - assenze statistiche
+            f.persone_in_forza
+            - COALESCE(an.assenze_nominali,    0)
+            - COALESCE(ast.assenze_statistiche, 0)      AS disponibili_netti,
+
+            -- GAP = disponibili netti - turni richiesti
+            f.persone_in_forza
+            - COALESCE(an.assenze_nominali,    0)
+            - COALESCE(ast.assenze_statistiche, 0)
+            - COALESCE(t.turni_richiesti,       0)      AS gap
+
         FROM forza f
-        LEFT JOIN turni t USING (giorno, deposito)
-        LEFT JOIN ass   a USING (giorno, deposito)
+        LEFT JOIN assenze_nom  an  USING (giorno, deposito)
+        LEFT JOIN assenze_stat ast USING (giorno, deposito)
+        LEFT JOIN turni        t   USING (giorno, deposito)
         ORDER BY f.giorno, f.deposito;
     """
     return pd.read_sql(query, get_conn())
