@@ -1427,26 +1427,35 @@ with tab2:
     if len(df_filtered) == 0:
         st.info("Nessun dato per i filtri selezionati.")
     else:
-        st2_a, st2_b, st2_c = st.tabs(["📉 Gap & Waterfall", "🏖️ Ferie & Riposi", "🤒 Assenze Complete"])
+        st2_a, st2_b, st2_c = st.tabs(
+            ["📉 Gap & Waterfall", "🏖️ Ferie & Riposi", "🤒 Assenze Complete"]
+        )
 
+        # ══════════════════════════════════════════════
+        # TAB 2A — GAP & WATERFALL
+        # ══════════════════════════════════════════════
         with st2_a:
-            st.markdown("#### <i class='fas fa-water'></i> Composizione Gap Medio Giornaliero — Luglio", unsafe_allow_html=True)
+            st.markdown(
+                "#### <i class='fas fa-water'></i> Composizione Gap Medio Giornaliero — Luglio",
+                unsafe_allow_html=True,
+            )
             st.markdown(
                 "<p style='color:#93c5fd;font-size:0.85rem;'>"
                 "Valori fissi luglio: <b>318 autisti</b> · <b>237 turni/giorno</b> · "
                 "assenze statistiche (lun–sab) + assenze roster (lun–sab, media giornaliera)</p>",
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
             # ── Valori fissi luglio ────────────────────────────────────────
             AUTISTI_LUGLIO = 318
-            TURNI_LUGLIO   = 237
+            TURNI_LUGLIO = 237
 
             # ── Assenze statistiche: media per giorno lun-sab ─────────────
             # Somma tutti i tipi per deposito/daytype, poi media sui 6 tipi
             # giorno (lunedi…sabato), esclude domenica
             try:
-                df_ass_stat = pd.read_sql("""
+                df_ass_stat = pd.read_sql(
+                    """
                     SELECT
                         SUM(
                             COALESCE(infortuni,0) + COALESCE(malattie,0) +
@@ -1456,7 +1465,9 @@ with tab2:
                         COUNT(DISTINCT daytype) AS n_tipi
                     FROM assenze
                     WHERE LOWER(daytype) NOT IN ('domenica')
-                """, get_conn())
+                    """,
+                    get_conn(),
+                )
                 # Dividiamo per 6 (lun-sab) per avere la media giornaliera
                 assenze_stat_giorno = float(df_ass_stat["totale_assenze"].iloc[0]) / 6.0
             except Exception as e:
@@ -1467,7 +1478,8 @@ with tab2:
             # Conta le assenze nominali (R, FP, AP, PADm, NF, FI) per ogni
             # giorno di luglio che NON sia domenica, poi fa la media
             try:
-                df_ass_roster = pd.read_sql("""
+                df_ass_roster = pd.read_sql(
+                    """
                     SELECT
                         r.data,
                         COUNT(*) FILTER (
@@ -1480,81 +1492,171 @@ with tab2:
                         AND LOWER(TO_CHAR(r.data, 'Day')) NOT LIKE 'dome%'
                         AND TRIM(LOWER(r.daytype)) NOT IN ('domenica')
                     GROUP BY r.data
-                """, get_conn())
-                assenze_roster_giorno = float(df_ass_roster["assenze_giorno"].mean()) if len(df_ass_roster) > 0 else 0.0
+                    """,
+                    get_conn(),
+                )
+                assenze_roster_giorno = (
+                    float(df_ass_roster["assenze_giorno"].mean())
+                    if len(df_ass_roster) > 0
+                    else 0.0
+                )
             except Exception as e:
                 st.warning(f"⚠️ Assenze roster luglio non disponibili: {e}")
                 assenze_roster_giorno = 0.0
 
+            # ── Calcoli finali ─────────────────────────────────────────────
             assenze_totali_giorno = assenze_stat_giorno + assenze_roster_giorno
-            disponibili_medi      = AUTISTI_LUGLIO - assenze_totali_giorno
-            gap_medio_wf          = disponibili_medi - TURNI_LUGLIO
-            colore_gap            = "#22c55e" if gap_medio_wf >= 0 else "#ef4444"
+            disponibili_medi = AUTISTI_LUGLIO - assenze_totali_giorno
+            gap_medio_wf = disponibili_medi - TURNI_LUGLIO
 
-            fig_wf = go.Figure(go.Waterfall(
-                orientation="v",
-                measure=["absolute","relative","relative","relative","total"],
-                x=[
-                    "👥 Autisti luglio",
-                    "➖ Assenze storiche",
-                    "➖ Assenze roster",
-                    "➖ Turni richiesti",
-                    "= Gap / Buffer"
-                ],
-                y=[
-                    AUTISTI_LUGLIO,
-                    -assenze_stat_giorno,
-                    -assenze_roster_giorno,
-                    -TURNI_LUGLIO,
-                    0
-                ],
-                text=[
-                    f"<b>{AUTISTI_LUGLIO}</b>",
-                    f"<b>−{assenze_stat_giorno:.1f}</b>",
-                    f"<b>−{assenze_roster_giorno:.1f}</b>",
-                    f"<b>−{TURNI_LUGLIO}</b>",
-                    f"<b>{'+' if gap_medio_wf >= 0 else ''}{gap_medio_wf:.1f}</b>",
-                ],
-                textposition="outside", textfont=dict(size=13, color="#e2e8f0"),
-                connector={"line": {"color": "rgba(96,165,250,0.4)", "width": 1.5, "dash": "dot"}},
-                increasing={"marker": {"color": "#22c55e"}},
-                decreasing={"marker": {"color": "#ef4444"}},
-                totals={"marker": {"color": colore_gap}},
-            ))
+            # ── Palette colori (come richiesto) ────────────────────────────
+            # Autisti: neutro
+            COLORE_AUTISTI = "#94a3b8"
+            # Assenze: rosso
+            COLORE_ASSENZE = "#ef4444"
+            # Turni: blu
+            COLORE_TURNI = "#3b82f6"
+            # Gap: verde se positivo, rosso se negativo
+            COLORE_GAP = "#22c55e" if gap_medio_wf >= 0 else "#ef4444"
+
+            colori_step = [
+                COLORE_AUTISTI,  # 👥 Autisti luglio
+                COLORE_ASSENZE,  # ➖ Assenze storiche
+                COLORE_ASSENZE,  # ➖ Assenze roster
+                COLORE_TURNI,    # ➖ Turni richiesti
+                COLORE_GAP,      # = Gap / Buffer (totale)
+            ]
+
+            # ── Waterfall ─────────────────────────────────────────────────
+            fig_wf = go.Figure(
+                go.Waterfall(
+                    orientation="v",
+                    measure=["absolute", "relative", "relative", "relative", "total"],
+                    x=[
+                        "👥 Autisti luglio",
+                        "➖ Assenze storiche",
+                        "➖ Assenze roster",
+                        "➖ Turni richiesti",
+                        "= Gap / Buffer",
+                    ],
+                    y=[
+                        AUTISTI_LUGLIO,
+                        -assenze_stat_giorno,
+                        -assenze_roster_giorno,
+                        -TURNI_LUGLIO,
+                        0,  # il totale lo calcola Plotly
+                    ],
+                    text=[
+                        f"<b>{AUTISTI_LUGLIO}</b>",
+                        f"<b>−{assenze_stat_giorno:.1f}</b>",
+                        f"<b>−{assenze_roster_giorno:.1f}</b>",
+                        f"<b>−{TURNI_LUGLIO}</b>",
+                        f"<b>{'+' if gap_medio_wf >= 0 else ''}{gap_medio_wf:.1f}</b>",
+                    ],
+                    textposition="outside",
+                    textfont=dict(size=13, color="#e2e8f0"),
+                    connector={
+                        "line": {
+                            "color": "rgba(96,165,250,0.4)",
+                            "width": 1.5,
+                            "dash": "dot",
+                        }
+                    },
+                    # Colori per singolo step
+                    marker=dict(color=colori_step),
+                )
+            )
+
+            # ── Annotazioni ───────────────────────────────────────────────
             fig_wf.add_annotation(
-                x="➖ Assenze roster", y=disponibili_medi,
+                x="➖ Assenze roster",
+                y=disponibili_medi,
                 text=f"Disponibili netti: <b>{disponibili_medi:.1f}</b>",
-                showarrow=True, arrowhead=2, ax=80, ay=-30,
+                showarrow=True,
+                arrowhead=2,
+                ax=80,
+                ay=-30,
                 font=dict(size=12, color="#93c5fd"),
-                bgcolor="rgba(15,23,42,0.85)", bordercolor="rgba(59,130,246,0.6)", borderwidth=1, borderpad=6
+                bgcolor="rgba(15,23,42,0.85)",
+                bordercolor="rgba(59,130,246,0.6)",
+                borderwidth=1,
+                borderpad=6,
             )
-            fig_wf.add_hline(y=0, line_dash="dash", line_color="rgba(255,255,255,0.3)", line_width=1)
+
+            fig_wf.add_hline(
+                y=0,
+                line_dash="dash",
+                line_color="rgba(255,255,255,0.3)",
+                line_width=1,
+            )
+
             annotation_color = "#22c55e" if gap_medio_wf >= 0 else "#ef4444"
-            annotation_text  = f"✅ Buffer: +{gap_medio_wf:.1f}" if gap_medio_wf >= 0 else f"🚨 Deficit: {gap_medio_wf:.1f}"
-            fig_wf.add_annotation(
-                x="= Gap / Buffer", y=gap_medio_wf + (10 if gap_medio_wf >= 0 else -10),
-                text=annotation_text, showarrow=False,
-                font=dict(size=13, color=annotation_color),
-                bgcolor="rgba(15,23,42,0.85)", bordercolor=annotation_color, borderwidth=1, borderpad=6
+            annotation_text = (
+                f"✅ Buffer: +{gap_medio_wf:.1f}"
+                if gap_medio_wf >= 0
+                else f"🚨 Deficit: {gap_medio_wf:.1f}"
             )
-            fig_wf.update_layout(height=500, showlegend=False,
-                plot_bgcolor="rgba(15,23,42,0.8)", paper_bgcolor="rgba(15,23,42,0.5)",
-                font=dict(color="#cbd5e1"), margin=dict(t=30, b=60, l=20, r=20),
-                xaxis=dict(gridcolor="rgba(96,165,250,0.08)", linecolor="rgba(96,165,250,0.2)", tickfont=dict(size=12)),
-                yaxis=dict(title="Persone (media/giorno)", gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.2)"))
+
+            fig_wf.add_annotation(
+                x="= Gap / Buffer",
+                y=gap_medio_wf + (10 if gap_medio_wf >= 0 else -10),
+                text=annotation_text,
+                showarrow=False,
+                font=dict(size=13, color=annotation_color),
+                bgcolor="rgba(15,23,42,0.85)",
+                bordercolor=annotation_color,
+                borderwidth=1,
+                borderpad=6,
+            )
+
+            # ── Layout coerente col tema ──────────────────────────────────
+            fig_wf.update_layout(
+                height=500,
+                showlegend=False,
+                plot_bgcolor=PLOTLY_TEMPLATE["plot_bgcolor"],
+                paper_bgcolor=PLOTLY_TEMPLATE["paper_bgcolor"],
+                font=PLOTLY_TEMPLATE["font"],
+                margin=dict(t=30, b=60, l=20, r=20),
+                xaxis=dict(
+                    gridcolor="rgba(96,165,250,0.08)",
+                    linecolor="rgba(96,165,250,0.2)",
+                    tickfont=dict(size=12),
+                ),
+                yaxis=dict(
+                    title="Persone (media/giorno)",
+                    gridcolor="rgba(96,165,250,0.1)",
+                    linecolor="rgba(96,165,250,0.2)",
+                ),
+            )
+
             st.plotly_chart(fig_wf, use_container_width=True, key="pc_5")
 
+            # ── KPI riepilogo ─────────────────────────────────────────────
             wk1, wk2, wk3, wk4, wk5 = st.columns(5)
-            with wk1: st.metric("👥 Autisti luglio",         f"{AUTISTI_LUGLIO}")
-            with wk2: st.metric("🚌 Turni/giorno",           f"{TURNI_LUGLIO}")
-            with wk3: st.metric("📊 Ass. storiche/giorno",   f"{assenze_stat_giorno:.1f}",   delta="lun–sab", delta_color="off")
-            with wk4: st.metric("📋 Ass. roster/giorno",     f"{assenze_roster_giorno:.1f}", delta="lun–sab luglio", delta_color="off")
+            with wk1:
+                st.metric("👥 Autisti luglio", f"{AUTISTI_LUGLIO}")
+            with wk2:
+                st.metric("🚌 Turni/giorno", f"{TURNI_LUGLIO}")
+            with wk3:
+                st.metric(
+                    "📊 Ass. storiche/giorno",
+                    f"{assenze_stat_giorno:.1f}",
+                    delta="lun–sab",
+                    delta_color="off",
+                )
+            with wk4:
+                st.metric(
+                    "📋 Ass. roster/giorno",
+                    f"{assenze_roster_giorno:.1f}",
+                    delta="lun–sab luglio",
+                    delta_color="off",
+                )
             with wk5:
                 st.metric(
-                    "⚖️ Gap medio/giorno",
+                    "⚖�� Gap medio/giorno",
                     f"{gap_medio_wf:+.1f}",
                     delta="✅ buffer" if gap_medio_wf >= 0 else "🚨 deficit",
-                    delta_color="normal" if gap_medio_wf >= 0 else "inverse"
+                    delta_color="normal" if gap_medio_wf >= 0 else "inverse",
                 )
 
             st.markdown("---")
