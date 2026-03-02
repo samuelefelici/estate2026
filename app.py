@@ -1484,46 +1484,33 @@ with tab2:
                 st.warning(f"⚠️ Assenze roster luglio non disponibili: {e}")
                 assenze_roster_giorno = 0.0
 
-            # ── Calcoli finali ─────────────────────────────────────────────
             assenze_totali_giorno = assenze_stat_giorno + assenze_roster_giorno
             disponibili_medi      = AUTISTI_LUGLIO - assenze_totali_giorno
             gap_medio_wf          = disponibili_medi - TURNI_LUGLIO
 
             # ── Colori richiesti ──────────────────────────────────────────
-            COLORE_NEUTRO  = "#94a3b8"  # autisti
-            COLORE_ASSENZE = "#ef4444"  # rosso
-            COLORE_TURNI   = "#3b82f6"  # blu
-            COLORE_GAP     = "#22c55e" if gap_medio_wf >= 0 else "#ef4444"
+            colore_autisti = "#94a3b8"  # neutro
+            colore_assenze = "#ef4444"  # rosso
+            colore_turni   = "#3b82f6"  # blu
+            colore_gap     = "#22c55e" if gap_medio_wf >= 0 else "#ef4444"
 
-            # --------------------------------------------------------------
-            # WATERFALL (senza marker.color per-step, non supportato)
-            #
-            # Trucco per i colori:
-            # - Le assenze le passiamo come "relative positive" (increasing) così diventano ROSSE
-            # - I turni restano "relative negative" (decreasing) così diventano BLU
-            # - Il totale (Gap/Buffer) lo coloriamo in base al segno
-            # --------------------------------------------------------------
             fig_wf = go.Figure(go.Waterfall(
                 orientation="v",
-                measure=["absolute", "relative", "relative", "relative", "total"],
+                measure=["absolute","relative","relative","relative","total"],
                 x=[
                     "👥 Autisti luglio",
                     "➖ Assenze storiche",
                     "➖ Assenze roster",
                     "➖ Turni richiesti",
-                    "= Gap / Buffer",
+                    "= Gap / Buffer"
                 ],
-                # NOTE:
-                # - assenze_* sono messe POSITIVE per usare "increasing" (rosso)
-                # - turni è NEGATIVO per usare "decreasing" (blu)
                 y=[
                     AUTISTI_LUGLIO,
-                    +assenze_stat_giorno,
-                    +assenze_roster_giorno,
+                    -assenze_stat_giorno,
+                    -assenze_roster_giorno,
                     -TURNI_LUGLIO,
-                    0,  # il totale lo calcola Plotly
+                    0
                 ],
-                # Il testo mostra comunque il segno "giusto" per l'utente
                 text=[
                     f"<b>{AUTISTI_LUGLIO}</b>",
                     f"<b>−{assenze_stat_giorno:.1f}</b>",
@@ -1535,62 +1522,88 @@ with tab2:
                 textfont=dict(size=13, color="#e2e8f0"),
                 connector={"line": {"color": "rgba(96,165,250,0.4)", "width": 1.5, "dash": "dot"}},
 
-                # Colori per tipo di barra (questi sono supportati)
-                increasing={"marker": {"color": COLORE_ASSENZE}},          # assenze (che abbiamo reso positive)
-                decreasing={"marker": {"color": COLORE_TURNI}},            # turni (negativi)
-                totals={"marker": {"color": COLORE_GAP}},                  # gap (verde/rosso)
+                # ✅ Autisti (absolute) usa "increasing" → lo mettiamo neutro
+                increasing={"marker": {"color": colore_autisti}},
+
+                # ✅ Tutte le barre negative diventano rosse (assenze + turni)
+                decreasing={"marker": {"color": colore_assenze}},
+
+                # ✅ Totale (gap) verde/rosso
+                totals={"marker": {"color": colore_gap}},
             ))
 
-            # ── Annotazioni ───────────────────────────────────────────────
+            # --------------------------------------------------------------
+            # Override colore SOLO della barra "Turni richiesti" a blu
+            # (Plotly non supporta colori diversi per singola barra negativa
+            # con l'API standard del Waterfall, quindi facciamo override dopo)
+            # --------------------------------------------------------------
+            try:
+                trace = fig_wf.data[0]  # il Waterfall è un singolo trace
+                # In trace.x l'ordine è quello che hai definito sopra
+                turni_index = list(trace.x).index("➖ Turni richiesti")
+
+                # Se marker.color non esiste, la creiamo come lista
+                if getattr(trace, "marker", None) is None:
+                    trace.marker = {}
+
+                existing = getattr(trace.marker, "color", None)
+
+                if existing is None:
+                    # Se non c'è una lista colori, ne creiamo una coerente:
+                    # - autisti neutro
+                    # - assenze rosse
+                    # - turni blu
+                    # - totale gap (colore_gap)
+                    new_colors = [
+                        colore_autisti,
+                        colore_assenze,
+                        colore_assenze,
+                        colore_turni,
+                        colore_gap,
+                    ]
+                    trace.marker.color = new_colors
+                else:
+                    # Se esiste già, proviamo a modificarla (se è una lista/tuple)
+                    colors_list = list(existing)
+                    if len(colors_list) == len(trace.x):
+                        colors_list[turni_index] = colore_turni
+                        trace.marker.color = colors_list
+            except Exception:
+                # Se per qualche versione Plotly non permette l'override, il grafico resta comunque leggibile
+                pass
+
             fig_wf.add_annotation(
-                x="➖ Assenze roster",
-                y=disponibili_medi,
+                x="➖ Assenze roster", y=disponibili_medi,
                 text=f"Disponibili netti: <b>{disponibili_medi:.1f}</b>",
                 showarrow=True, arrowhead=2, ax=80, ay=-30,
                 font=dict(size=12, color="#93c5fd"),
-                bgcolor="rgba(15,23,42,0.85)", bordercolor="rgba(59,130,246,0.6)",
-                borderwidth=1, borderpad=6
+                bgcolor="rgba(15,23,42,0.85)", bordercolor="rgba(59,130,246,0.6)", borderwidth=1, borderpad=6
             )
 
+            # ✅ Se gap è negativo, resta sotto lo 0 (questa linea lo rende evidente)
             fig_wf.add_hline(y=0, line_dash="dash", line_color="rgba(255,255,255,0.3)", line_width=1)
 
             annotation_color = "#22c55e" if gap_medio_wf >= 0 else "#ef4444"
             annotation_text  = f"✅ Buffer: +{gap_medio_wf:.1f}" if gap_medio_wf >= 0 else f"🚨 Deficit: {gap_medio_wf:.1f}"
             fig_wf.add_annotation(
-                x="= Gap / Buffer",
-                y=gap_medio_wf + (10 if gap_medio_wf >= 0 else -10),
-                text=annotation_text,
-                showarrow=False,
+                x="= Gap / Buffer", y=gap_medio_wf + (10 if gap_medio_wf >= 0 else -10),
+                text=annotation_text, showarrow=False,
                 font=dict(size=13, color=annotation_color),
-                bgcolor="rgba(15,23,42,0.85)",
-                bordercolor=annotation_color,
-                borderwidth=1,
-                borderpad=6
+                bgcolor="rgba(15,23,42,0.85)", bordercolor=annotation_color, borderwidth=1, borderpad=6
             )
 
-            # ── Layout coerente col tema ──────────────────────────────────
             fig_wf.update_layout(
                 height=500,
                 showlegend=False,
-                plot_bgcolor=PLOTLY_TEMPLATE["plot_bgcolor"],
-                paper_bgcolor=PLOTLY_TEMPLATE["paper_bgcolor"],
-                font=PLOTLY_TEMPLATE["font"],
+                plot_bgcolor="rgba(15,23,42,0.8)",
+                paper_bgcolor="rgba(15,23,42,0.5)",
+                font=dict(color="#cbd5e1"),
                 margin=dict(t=30, b=60, l=20, r=20),
-                xaxis=dict(
-                    gridcolor="rgba(96,165,250,0.08)",
-                    linecolor="rgba(96,165,250,0.2)",
-                    tickfont=dict(size=12),
-                ),
-                yaxis=dict(
-                    title="Persone (media/giorno)",
-                    gridcolor="rgba(96,165,250,0.1)",
-                    linecolor="rgba(96,165,250,0.2)",
-                )
+                xaxis=dict(gridcolor="rgba(96,165,250,0.08)", linecolor="rgba(96,165,250,0.2)", tickfont=dict(size=12)),
+                yaxis=dict(title="Persone (media/giorno)", gridcolor="rgba(96,165,250,0.1)", linecolor="rgba(96,165,250,0.2)"),
             )
-
             st.plotly_chart(fig_wf, use_container_width=True, key="pc_5")
 
-            # ── KPI riepilogo ─────────────────────────────────────────────
             wk1, wk2, wk3, wk4, wk5 = st.columns(5)
             with wk1: st.metric("👥 Autisti luglio",         f"{AUTISTI_LUGLIO}")
             with wk2: st.metric("🚌 Turni/giorno",           f"{TURNI_LUGLIO}")
