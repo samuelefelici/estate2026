@@ -1086,8 +1086,30 @@ with tab1:
             with kc3: st.metric("🚨 Deficit",f"{int((cop['gap']<0).sum())}")
             with kc4: st.metric("📉 Gap medio",f"{cop['gap'].mean():.1f}",delta=f"min: {cop['gap'].min():.0f}")
 
-            fig_cop = make_subplots(rows=2,cols=1,row_heights=[0.70,0.30],shared_xaxes=True,vertical_spacing=0.05,subplot_titles=("Distribuzione persone in forza","Buffer / Deficit"))
+            fig_cop.update_layout(
+                barmode="stack",
+                height=680,
+                hovermode="x unified",
 
+    # Sfondo coerente col tema (come PLOTLY_TEMPLATE)
+                plot_bgcolor=PLOTLY_TEMPLATE["plot_bgcolor"],
+                paper_bgcolor=PLOTLY_TEMPLATE["paper_bgcolor"],
+                font=PLOTLY_TEMPLATE["font"],
+
+    # Legenda "dark"
+                legend=dict(
+                    orientation="h",
+                    y=1.02,
+                    xanchor="right",
+                    x=1,
+                    font=dict(size=10),
+                    bgcolor="rgba(15,23,42,0.65)",
+                    bordercolor="rgba(245,158,11,0.18)",
+                    borderwidth=1,
+                ),
+
+                margin=dict(t=60, b=20, l=10, r=10),
+            )
             # ── Calcolo colonne split ──
             # disponibili = persone - assenze (quanto resta per coprire turni)
             cop["disponibili_netti"] = (cop["persone_in_forza"] - cop["assenze_nominali"] - cop["assenze_statistiche"]).clip(lower=0)
