@@ -1307,18 +1307,6 @@ with tab1:
 
             st.plotly_chart(fig_cop, use_container_width=True, key="pc1")
 
-            st.markdown(
-                """<div class='legend-box'>
-                    <div class='legend-item'><div class='legend-dot' style='background:#cbd5e1;'></div> Assenze roster</div>
-                    <div class='legend-item'><div class='legend-dot' style='background:#e2e8f0;'></div> Assenze storiche</div>
-                    <div class='legend-item'><div class='legend-dot' style='background:#94a3b8;'></div> Turni coperti</div>
-                    <div class='legend-item'><div class='legend-dot' style='background:#22c55e;'></div> Buffer (sotto linea)</div>
-                    <div class='legend-item'><div class='legend-dot' style='background:#ef4444;'></div> Deficit (sopra linea)</div>
-                    <div class='legend-item'><div style='width:18px;height:2px;border-top:2.5px dotted #78716c;'></div> Organico (breakeven)</div>
-                </div>""",
-                unsafe_allow_html=True,
-            )
-
         with st.expander("📊 Gauge & Distribuzione"):
             eg1, eg2 = st.columns(2)
             with eg1:
