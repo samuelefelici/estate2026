@@ -773,6 +773,107 @@ def load_copertura() -> pd.DataFrame:
     return pd.read_sql(query, get_conn())
 
 
+@st.cache_data(ttl=600)
+def load_staffing_roster2() -> pd.DataFrame:
+    query = """
+        SELECT
+            r.data                             AS giorno,
+            c.daytype                          AS tipo_giorno,
+            r.deposito,
+            COUNT(DISTINCT r.matricola)        AS totale_autisti,
+            COALESCE(t.turni_richiesti, 0)     AS turni_richiesti,
+            GREATEST(
+                COUNT(DISTINCT r.matricola)
+                - COUNT(*) FILTER (WHERE r.turno IN ('R','FP','AP','PADm','NF','FI'))
+            , 0)                               AS disponibili_netti,
+            COUNT(DISTINCT r.matricola)
+                - COUNT(*) FILTER (WHERE r.turno IN ('R','FP','AP','PADm','NF','FI'))
+                - COALESCE(t.turni_richiesti, 0) AS gap
+        FROM roster2 r
+        JOIN calendar c ON c.data = r.data
+        LEFT JOIN (
+            SELECT data AS giorno, deposito, COUNT(*) AS turni_richiesti
+            FROM turni_giornalieri
+            GROUP BY data, deposito
+        ) t ON t.giorno = r.data AND t.deposito = r.deposito
+        GROUP BY r.data, c.daytype, r.deposito, COALESCE(t.turni_richiesti, 0)
+        ORDER BY r.data, r.deposito;
+    """
+    return pd.read_sql(query, get_conn())
+
+
+@st.cache_data(ttl=600)
+def load_copertura_roster2() -> pd.DataFrame:
+    query = """
+        WITH
+        forza AS (
+            SELECT
+                r.data                          AS giorno,
+                r.deposito,
+                COUNT(DISTINCT r.matricola)     AS persone_in_forza
+            FROM roster2 r
+            GROUP BY r.data, r.deposito
+        ),
+        assenze_nom AS (
+            SELECT
+                r.data                          AS giorno,
+                r.deposito,
+                COUNT(*) FILTER (
+                    WHERE r.turno IN ('R','FP','AP','PADm','NF','FI')
+                )                               AS assenze_nominali
+            FROM roster2 r
+            GROUP BY r.data, r.deposito
+        ),
+        assenze_stat AS (
+            SELECT
+                c.data                          AS giorno,
+                a.deposito,
+                ROUND(
+                    COALESCE(a.infortuni,          0) +
+                    COALESCE(a.malattie,            0) +
+                    COALESCE(a.legge_104,           0) +
+                    COALESCE(a.altre_assenze,       0) +
+                    COALESCE(a.congedo_parentale,   0) +
+                    COALESCE(a.permessi_vari,       0)
+                , 2)                            AS assenze_statistiche
+            FROM assenze a
+            JOIN calendar c ON c.daytype = a.daytype
+        ),
+        turni AS (
+            SELECT
+                data                            AS giorno,
+                deposito,
+                COUNT(*)                        AS turni_richiesti
+            FROM turni_giornalieri
+            GROUP BY data, deposito
+        )
+        SELECT
+            f.giorno,
+            f.deposito,
+            f.persone_in_forza,
+            COALESCE(an.assenze_nominali,     0)    AS assenze_nominali,
+            COALESCE(ast.assenze_statistiche, 0)    AS assenze_statistiche,
+            COALESCE(t.turni_richiesti,       0)    AS turni_richiesti,
+            ROUND(
+                f.persone_in_forza
+                - COALESCE(an.assenze_nominali,     0)
+                - COALESCE(ast.assenze_statistiche, 0)
+            , 2)                                    AS disponibili_netti,
+            ROUND(
+                f.persone_in_forza
+                - COALESCE(an.assenze_nominali,     0)
+                - COALESCE(ast.assenze_statistiche, 0)
+                - COALESCE(t.turni_richiesti,       0)
+            , 2)                                    AS gap
+        FROM forza f
+        LEFT JOIN assenze_nom  an  USING (giorno, deposito)
+        LEFT JOIN assenze_stat ast USING (giorno, deposito)
+        LEFT JOIN turni        t   USING (giorno, deposito)
+        ORDER BY f.giorno, f.deposito;
+    """
+    return pd.read_sql(query, get_conn())
+
+
 try:
     df_raw = load_staffing()
     df_raw["giorno"] = pd.to_datetime(df_raw["giorno"])
@@ -800,6 +901,23 @@ try:
 except Exception as e:
     st.sidebar.warning(f"⚠️ Copertura non disponibile: {e}")
     df_copertura = pd.DataFrame()
+
+# --- roster2 ---
+roster2_disponibile = False
+try:
+    df_raw2 = load_staffing_roster2()
+    df_raw2["giorno"] = pd.to_datetime(df_raw2["giorno"])
+    df_raw2 = df_raw2[df_raw2["deposito"] != "depbelvede"].copy()
+    roster2_disponibile = len(df_raw2) > 0
+except Exception:
+    df_raw2 = pd.DataFrame()
+
+try:
+    df_copertura2 = load_copertura_roster2()
+    df_copertura2["giorno"] = pd.to_datetime(df_copertura2["giorno"])
+    df_copertura2 = df_copertura2[df_copertura2["deposito"] != "depbelvede"].copy()
+except Exception:
+    df_copertura2 = pd.DataFrame()
 
 
 # --------------------------------------------------
@@ -837,6 +955,8 @@ def applica_ferie_10gg(df_in: pd.DataFrame) -> pd.DataFrame:
 
 
 df_raw["categoria_giorno"] = df_raw["tipo_giorno"].apply(categorizza_tipo_giorno)
+if roster2_disponibile and len(df_raw2) > 0:
+    df_raw2["categoria_giorno"] = df_raw2["tipo_giorno"].apply(categorizza_tipo_giorno)
 
 
 # --------------------------------------------------
@@ -935,6 +1055,57 @@ if len(df_copertura) > 0:
         df_copertura_filtered = df_copertura_filtered[df_copertura_filtered["deposito"].isin(deposito_sel)]
 else:
     df_copertura_filtered = pd.DataFrame()
+
+# --- filtri roster2 ---
+if roster2_disponibile and len(df_raw2) > 0:
+    if len(date_range) == 2:
+        df_filtered2 = df_raw2[
+            (df_raw2["deposito"].isin(deposito_sel)) &
+            (df_raw2["giorno"] >= pd.to_datetime(date_range[0])) &
+            (df_raw2["giorno"] <= pd.to_datetime(date_range[1]))
+        ].copy()
+    else:
+        df_filtered2 = df_raw2[df_raw2["deposito"].isin(deposito_sel)].copy()
+else:
+    df_filtered2 = pd.DataFrame()
+
+if len(df_copertura2) > 0:
+    if ferie_10:
+        df_cop2 = df_copertura2.copy()
+        df_cop2["deposito_norm"] = df_cop2["deposito"].str.strip().str.lower()
+        df_cop2["ferie_extra"] = 0.0
+        df_cop2.loc[df_cop2["deposito_norm"] == "ancona", "ferie_extra"] += 5.0
+        mask_elig2 = ~df_cop2["deposito_norm"].isin(["ancona", "moie"])
+        elig2 = df_cop2[mask_elig2].copy()
+        if not elig2.empty:
+            elig2["peso"] = elig2["persone_in_forza"].clip(lower=0)
+            sum_p2 = elig2.groupby("giorno")["peso"].transform("sum")
+            elig2["quota"] = np.where(sum_p2 > 0, 5.0 * elig2["peso"] / sum_p2, 0.0)
+            df_cop2.loc[elig2.index, "ferie_extra"] += elig2["quota"].values
+        df_cop2["assenze_nominali"] = df_cop2["assenze_nominali"] + df_cop2["ferie_extra"]
+        df_cop2["gap"] = (
+            df_cop2["persone_in_forza"]
+            - df_cop2["assenze_nominali"]
+            - df_cop2["assenze_statistiche"]
+            - df_cop2["turni_richiesti"]
+        )
+        df_cop2.drop(columns=["deposito_norm", "ferie_extra"], inplace=True)
+        df_copertura2_filtered = df_cop2
+    else:
+        df_copertura2_filtered = df_copertura2.copy()
+
+    if len(date_range) == 2:
+        df_copertura2_filtered = df_copertura2_filtered[
+            (df_copertura2_filtered["giorno"] >= pd.to_datetime(date_range[0])) &
+            (df_copertura2_filtered["giorno"] <= pd.to_datetime(date_range[1])) &
+            (df_copertura2_filtered["deposito"].isin(deposito_sel))
+        ]
+    else:
+        df_copertura2_filtered = df_copertura2_filtered[
+            df_copertura2_filtered["deposito"].isin(deposito_sel)
+        ]
+else:
+    df_copertura2_filtered = pd.DataFrame()
 
 # --- filtro turni calendario ---
 if turni_cal_ok and len(df_turni_cal) > 0:
@@ -1063,8 +1234,9 @@ else:
 # --------------------------------------------------
 # TABS
 # --------------------------------------------------
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 Overview", "📈 Analisi & Assenze", "🚌 Turni Calendario", "🎯 Depositi", "📥 Export",
+    "🔄 Confronto & Assunzioni",
 ])
 
 
@@ -1969,6 +2141,266 @@ with tab5:
     st.markdown("---")
     st.markdown("##### 👀 Anteprima Dataset")
     st.dataframe(df_export.head(100), use_container_width=True, height=400)
+
+
+# --------------------------------------------------
+# FOOTER
+# --------------------------------------------------
+
+
+# ══════════════════════════════════════════════════
+# TAB 6 — CONFRONTO ROSTER vs ROSTER2 & ASSUNZIONI
+# ══════════════════════════════════════════════════
+def _build_copertura_fig(df_cop_raw: pd.DataFrame, titolo: str, chart_key: str) -> None:
+    """Costruisce e mostra il grafico copertura stacked (identico al Tab 1)."""
+    if len(df_cop_raw) == 0:
+        st.info(f"Nessun dato disponibile per: {titolo}")
+        return
+
+    cop = (
+        df_cop_raw.groupby("giorno")
+        .agg(
+            persone_in_forza=("persone_in_forza", "sum"),
+            turni_richiesti=("turni_richiesti", "sum"),
+            assenze_nominali=("assenze_nominali", "sum"),
+            assenze_statistiche=("assenze_statistiche", "sum"),
+            gap=("gap", "sum"),
+        )
+        .reset_index()
+    )
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1: st.metric("👥 Media/gg", f"{cop['persone_in_forza'].mean():.0f}")
+    with c2: st.metric("✅ Giorni OK", f"{int((cop['gap'] >= 0).sum())}")
+    with c3: st.metric("🚨 Deficit", f"{int((cop['gap'] < 0).sum())}")
+    with c4: st.metric("📉 Gap medio", f"{cop['gap'].mean():.1f}", delta=f"min: {cop['gap'].min():.0f}")
+
+    cop["disponibili_netti"] = (
+        cop["persone_in_forza"] - cop["assenze_nominali"] - cop["assenze_statistiche"]
+    ).clip(lower=0)
+    cop["turni_coperti"] = cop[["turni_richiesti", "disponibili_netti"]].min(axis=1)
+    cop["buffer"]  = cop["gap"].clip(lower=0)
+    cop["deficit"] = (-cop["gap"]).clip(lower=0)
+
+    fig = make_subplots(
+        rows=2, cols=1, row_heights=[0.70, 0.30],
+        shared_xaxes=True, vertical_spacing=0.05,
+        subplot_titles=(titolo, "Buffer / Deficit"),
+    )
+
+    fig.add_trace(go.Bar(x=cop["giorno"], y=cop["assenze_nominali"],
+        name="Assenze roster", marker_color="#ef4444", opacity=0.85), row=1, col=1)
+    fig.add_trace(go.Bar(x=cop["giorno"], y=cop["assenze_statistiche"],
+        name="Assenze statistiche", marker_color="#f97316", opacity=0.85), row=1, col=1)
+    fig.add_trace(go.Bar(x=cop["giorno"], y=cop["turni_coperti"],
+        name="Turni coperti", marker_color="#3b82f6", opacity=0.9), row=1, col=1)
+    fig.add_trace(go.Bar(x=cop["giorno"], y=cop["buffer"],
+        name="Buffer", marker_color="#22c55e", opacity=0.85), row=1, col=1)
+    fig.add_trace(go.Bar(x=cop["giorno"], y=cop["deficit"],
+        name="Deficit", marker_color="#dc2626", opacity=0.95), row=1, col=1)
+    fig.add_trace(go.Scatter(x=cop["giorno"], y=cop["persone_in_forza"],
+        mode="lines", name="Organico totale",
+        line=dict(color="#fbbf24", width=2, dash="dot")), row=1, col=1)
+
+    colors_gap = ["#22c55e" if v >= 0 else "#ef4444" for v in cop["gap"]]
+    fig.add_trace(go.Bar(x=cop["giorno"], y=cop["gap"],
+        name="Gap", marker_color=colors_gap, opacity=0.85), row=2, col=1)
+    fig.add_hline(y=0, line_color="#fbbf24", line_dash="dot", line_width=1.5, row=2, col=1)
+
+    fig.update_layout(
+        barmode="stack", height=520,
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
+                    font=dict(color="#cbd5e1", size=11)),
+        margin=dict(l=0, r=0, t=30, b=0),
+    )
+    fig.update_xaxes(gridcolor="rgba(255,255,255,0.05)", showgrid=True)
+    fig.update_yaxes(gridcolor="rgba(255,255,255,0.07)", showgrid=True)
+    st.plotly_chart(fig, use_container_width=True, key=chart_key)
+
+
+with tab6:
+    st.markdown("## 🔄 Confronto Roster Originale vs Roster2 (ferie spostate)")
+
+    ha_cop1 = len(df_copertura_filtered) > 0
+    ha_cop2 = len(df_copertura2_filtered) > 0
+
+    if not ha_cop1 and not ha_cop2:
+        st.info("Dati copertura non disponibili. Verifica che le tabelle roster e roster2 siano popolate.")
+    else:
+        # ── SEZIONE 1: grafici copertura affiancati ──────────────────────
+        st.markdown("### 📊 Sezione 1 — Copertura giornaliera a confronto")
+        col_r1, col_r2 = st.columns(2)
+
+        with col_r1:
+            st.markdown(
+                "<div style='border:2px solid #3b82f6;border-radius:10px;padding:8px 14px;"
+                "margin-bottom:8px;color:#93c5fd;font-weight:700;'>ROSTER ORIGINALE</div>",
+                unsafe_allow_html=True,
+            )
+            if ha_cop1:
+                _build_copertura_fig(df_copertura_filtered, "Roster Originale", "pc6_cop1")
+            else:
+                st.info("Dati roster non disponibili.")
+
+        with col_r2:
+            st.markdown(
+                "<div style='border:2px solid #f59e0b;border-radius:10px;padding:8px 14px;"
+                "margin-bottom:8px;color:#fbbf24;font-weight:700;'>ROSTER2 — FERIE SPOSTATE</div>",
+                unsafe_allow_html=True,
+            )
+            if ha_cop2:
+                _build_copertura_fig(df_copertura2_filtered, "Roster2 — Ferie Spostate", "pc6_cop2")
+            else:
+                st.info("Dati roster2 non disponibili. Esegui l'import di roster2 nel database.")
+
+        st.markdown("---")
+
+        # ── SEZIONE 2: gap sovrapposto ───────────────────────────────────
+        if ha_cop1 and ha_cop2:
+            st.markdown("### 📈 Sezione 2 — Gap sovrapposto & miglioramenti")
+
+            gap1 = (df_copertura_filtered.groupby("giorno")["gap"].sum()
+                    .reset_index().rename(columns={"gap": "gap1"}))
+            gap2 = (df_copertura2_filtered.groupby("giorno")["gap"].sum()
+                    .reset_index().rename(columns={"gap": "gap2"}))
+            gap_merge = gap1.merge(gap2, on="giorno", how="outer").fillna(0).sort_values("giorno")
+            gap_merge["delta"] = gap_merge["gap2"] - gap_merge["gap1"]
+
+            fig_gap = make_subplots(
+                rows=2, cols=1, row_heights=[0.65, 0.35],
+                shared_xaxes=True, vertical_spacing=0.06,
+                subplot_titles=("Gap giornaliero: Roster vs Roster2", "Miglioramento (Δ gap)"),
+            )
+            fig_gap.add_trace(go.Scatter(
+                x=gap_merge["giorno"], y=gap_merge["gap1"],
+                name="Roster originale", line=dict(color="#3b82f6", width=2, dash="dot"),
+                mode="lines",
+            ), row=1, col=1)
+            fig_gap.add_trace(go.Scatter(
+                x=gap_merge["giorno"], y=gap_merge["gap2"],
+                name="Roster2 (ferie spostate)", line=dict(color="#f59e0b", width=2.5),
+                mode="lines",
+            ), row=1, col=1)
+            fig_gap.add_hline(y=0, line_color="#ef4444", line_dash="dot", line_width=1.2, row=1, col=1)
+
+            delta_colors = ["#22c55e" if v > 0 else "#ef4444" if v < 0 else "#64748b"
+                            for v in gap_merge["delta"]]
+            fig_gap.add_trace(go.Bar(
+                x=gap_merge["giorno"], y=gap_merge["delta"],
+                name="Δ gap (verde=miglioramento)", marker_color=delta_colors, opacity=0.85,
+            ), row=2, col=1)
+            fig_gap.add_hline(y=0, line_color="#fbbf24", line_dash="dot", line_width=1, row=2, col=1)
+
+            fig_gap.update_layout(
+                height=480, barmode="relative",
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
+                            font=dict(color="#cbd5e1", size=11)),
+                margin=dict(l=0, r=0, t=30, b=0),
+            )
+            fig_gap.update_xaxes(gridcolor="rgba(255,255,255,0.05)")
+            fig_gap.update_yaxes(gridcolor="rgba(255,255,255,0.07)")
+            st.plotly_chart(fig_gap, use_container_width=True, key="pc6_gap")
+
+            st.markdown("---")
+
+        # ── SEZIONE 3: per deposito ──────────────────────────────────────
+        if ha_cop1 and ha_cop2:
+            st.markdown("### 🏭 Sezione 3 — Gap medio per deposito")
+
+            gap_dep1 = (df_copertura_filtered.groupby("deposito")["gap"]
+                        .mean().reset_index().rename(columns={"gap": "gap_roster"}))
+            gap_dep2 = (df_copertura2_filtered.groupby("deposito")["gap"]
+                        .mean().reset_index().rename(columns={"gap": "gap_roster2"}))
+            dep_merge = gap_dep1.merge(gap_dep2, on="deposito", how="outer").fillna(0)
+            dep_merge = dep_merge.sort_values("gap_roster")
+
+            fig_dep = go.Figure()
+            fig_dep.add_trace(go.Bar(
+                y=dep_merge["deposito"], x=dep_merge["gap_roster"],
+                name="Roster originale", orientation="h",
+                marker_color="#3b82f6", opacity=0.85,
+            ))
+            fig_dep.add_trace(go.Bar(
+                y=dep_merge["deposito"], x=dep_merge["gap_roster2"],
+                name="Roster2 (ferie spostate)", orientation="h",
+                marker_color="#f59e0b", opacity=0.85,
+            ))
+            fig_dep.update_layout(
+                barmode="group", height=400,
+                xaxis_title="Gap medio giornaliero",
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                legend=dict(font=dict(color="#cbd5e1")),
+                margin=dict(l=0, r=0, t=10, b=0),
+            )
+            fig_dep.add_vline(x=0, line_color="#ef4444", line_dash="dot", line_width=1.5)
+            st.plotly_chart(fig_dep, use_container_width=True, key="pc6_dep")
+
+            st.markdown("---")
+
+        # ── SEZIONE 4: stima assunzioni ──────────────────────────────────
+        st.markdown("### 👷 Sezione 4 — Stima assunzioni necessarie")
+        st.markdown(
+            "<p style='color:#94a3b8;font-size:0.88rem;'>Basato sui dati <b>roster2</b>. "
+            "Per ogni deposito con gap medio negativo, si stima il numero di autisti aggiuntivi "
+            "necessari per coprire il deficit medio giornaliero.</p>",
+            unsafe_allow_html=True,
+        )
+
+        if ha_cop2:
+            from math import ceil
+            dep_gaps = df_copertura2_filtered.groupby("deposito")["gap"].mean().reset_index()
+            dep_gaps.columns = ["deposito", "gap_medio"]
+            dep_gaps["deficit_medio"] = dep_gaps["gap_medio"].apply(
+                lambda x: abs(x) if x < 0 else 0
+            )
+            dep_gaps["assunzioni_stimate"] = dep_gaps["deficit_medio"].apply(
+                lambda x: ceil(x) if x > 0 else 0
+            )
+            dep_gaps_deficit = dep_gaps[dep_gaps["assunzioni_stimate"] > 0].sort_values(
+                "assunzioni_stimate", ascending=False
+            )
+
+            if len(dep_gaps_deficit) == 0:
+                st.success("✅ Nessun deficit in roster2! Il piano ferie è sostenibile.")
+            else:
+                totale_assunzioni = dep_gaps_deficit["assunzioni_stimate"].sum()
+                st.metric("👷 Totale assunzioni stimate", f"{int(totale_assunzioni)} autisti")
+
+                fig_ass = go.Figure(go.Bar(
+                    x=dep_gaps_deficit["deposito"],
+                    y=dep_gaps_deficit["assunzioni_stimate"],
+                    marker_color=[get_colore_deposito(d) for d in dep_gaps_deficit["deposito"]],
+                    text=dep_gaps_deficit["assunzioni_stimate"],
+                    textposition="outside",
+                ))
+                fig_ass.update_layout(
+                    height=360, yaxis_title="Autisti da assumere",
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=0, r=0, t=10, b=0),
+                )
+                st.plotly_chart(fig_ass, use_container_width=True, key="pc6_ass")
+
+                st.markdown("##### Dettaglio per deposito")
+                display_df = dep_gaps_deficit[["deposito", "gap_medio", "deficit_medio", "assunzioni_stimate"]].copy()
+                display_df.columns = ["Deposito", "Gap medio/gg", "Deficit medio/gg", "Autisti da assumere"]
+                display_df["Gap medio/gg"] = display_df["Gap medio/gg"].round(1)
+                display_df["Deficit medio/gg"] = display_df["Deficit medio/gg"].round(1)
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+                # Export Excel
+                output_ass = BytesIO()
+                with pd.ExcelWriter(output_ass, engine="xlsxwriter") as writer:
+                    display_df.to_excel(writer, sheet_name="Assunzioni", index=False)
+                st.download_button(
+                    "⬇️ Scarica piano assunzioni (Excel)",
+                    data=output_ass.getvalue(),
+                    file_name=f"piano_assunzioni_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+        else:
+            st.info("Popola la tabella roster2 nel database per ottenere la stima delle assunzioni.")
 
 
 # --------------------------------------------------
