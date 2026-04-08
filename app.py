@@ -590,28 +590,16 @@ PLOTLY_TEMPLATE = {
 # CONNESSIONE DATABASE
 # --------------------------------------------------
 def get_conn():
-    if "db_conn" not in st.session_state or st.session_state["db_conn"].closed:
-        st.session_state["db_conn"] = psycopg2.connect(
-            st.secrets["DATABASE_URL"], sslmode="require"
-        )
-    else:
-        try:
-            c = st.session_state["db_conn"].cursor()
-            c.execute("SELECT 1;")
-            c.close()
-        except Exception:
-            st.session_state["db_conn"] = psycopg2.connect(
-                st.secrets["DATABASE_URL"], sslmode="require"
-            )
-    return st.session_state["db_conn"]
-
-conn = get_conn()
+    """Apre una nuova connessione ad ogni chiamata. Semplice e affidabile su Streamlit Cloud."""
+    return psycopg2.connect(st.secrets["DATABASE_URL"], sslmode="require", connect_timeout=10)
 
 try:
-    cur = conn.cursor()
-    cur.execute("SELECT NOW();")
-    db_time = cur.fetchone()[0]
-    cur.close()
+    _c = get_conn()
+    _cur = _c.cursor()
+    _cur.execute("SELECT NOW();")
+    db_time = _cur.fetchone()[0]
+    _cur.close()
+    _c.close()
     st.sidebar.success(f"✅ DB connesso\n{db_time.strftime('%d/%m/%Y %H:%M')}")
 except Exception as e:
     st.sidebar.error(f"❌ Errore DB: {e}")
