@@ -504,73 +504,74 @@ inject_css(
 # --------------------------------------------------
 inject_css(r"""
 :root{
-  --bg0:#020b18; --bg1:#0b1226; --bg2:#0f172a;
-  --blue:#60a5fa; --blue2:#93c5fd;
-  --amber:#fbbf24; --amber2:#f59e0b; --brown:#b45309; --sand:#fde68a;
-  --text:#cbd5e1; --muted:#94a3b8;
+  --bg:#f8fafc; --surface:#ffffff; --surface2:#f1f5f9;
+  --border:#e2e8f0; --border-strong:#cbd5e1;
+  --primary:#1e40af; --primary-mid:#2563eb; --primary-light:#3b82f6; --primary-pale:#eff6ff;
+  --success:#16a34a; --success-pale:#f0fdf4; --success-mid:#22c55e;
+  --danger:#dc2626; --danger-pale:#fef2f2; --danger-mid:#ef4444;
+  --warning:#d97706; --warning-pale:#fffbeb; --warning-mid:#f59e0b;
+  --info:#0369a1; --info-pale:#f0f9ff;
+  --text:#1e293b; --text-sub:#475569; --text-muted:#94a3b8;
 }
 .stApp{
-  background:
-    radial-gradient(1100px 780px at 52% 48%, rgba(245,158,11,0.14) 0%, rgba(2,11,24,0.0) 62%),
-    radial-gradient(900px 680px at 50% 45%, rgba(59,130,246,0.12) 0%, rgba(2,11,24,0.0) 60%),
-    linear-gradient(135deg, var(--bg1) 0%, #0b1630 45%, var(--bg2) 100%);
-  background-attachment: fixed;
+  background: var(--bg) !important;
 }
 h1{
-  color: var(--sand) !important;
-  text-shadow: 0 0 18px rgba(245,158,11,0.28), 0 0 34px rgba(180,83,9,0.20);
-  font-weight: 900 !important; letter-spacing: 2px;
-  font-size: 3rem !important; margin-bottom: 1rem !important;
+  color: var(--primary) !important;
+  font-weight: 900 !important; letter-spacing: 1px;
+  font-size: 2.6rem !important; margin-bottom: 0.75rem !important;
 }
-h2{ color: var(--blue2) !important; text-shadow: 0 0 12px rgba(96,165,250,0.22); font-weight: 800 !important; margin-top: 30px !important; letter-spacing: .5px; }
-h3{ color: #e2e8f0 !important; text-shadow: 0 0 10px rgba(0,0,0,0.35); font-weight: 700 !important; }
-[data-testid="stMetricValue"]{ font-size: 2.55rem !important; font-weight: 900 !important; color: var(--sand) !important; text-shadow: 0 0 18px rgba(245,158,11,0.22), 0 0 30px rgba(180,83,9,0.15); }
-[data-testid="stMetricLabel"]{ font-size: 0.98rem !important; font-weight: 700 !important; color: var(--blue2) !important; text-transform: uppercase; letter-spacing: 1px; }
+h2{ color: var(--text) !important; font-weight: 800 !important; margin-top: 28px !important; letter-spacing: .2px; }
+h3{ color: var(--text-sub) !important; font-weight: 700 !important; }
+[data-testid="stMetricValue"]{ font-size: 2.4rem !important; font-weight: 900 !important; color: var(--primary-mid) !important; }
+[data-testid="stMetricLabel"]{ font-size: 0.88rem !important; font-weight: 700 !important; color: var(--text-sub) !important; text-transform: uppercase; letter-spacing: 0.8px; }
 [data-testid="metric-container"]{
-  background: linear-gradient(135deg, rgba(15,23,42,0.72) 0%, rgba(2,11,24,0.72) 100%);
-  padding: 24px; border-radius: 16px;
-  box-shadow: 0 10px 34px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.08);
-  backdrop-filter: blur(10px); border: 1px solid rgba(245,158,11,0.14); transition: all 0.28s ease;
+  background: var(--surface);
+  padding: 20px 22px; border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(30,64,175,0.08), 0 1px 3px rgba(0,0,0,0.06);
+  border: 1px solid var(--border); transition: all 0.22s ease;
 }
 [data-testid="metric-container"]:hover{
-  transform: translateY(-5px);
-  box-shadow: 0 14px 44px rgba(245,158,11,0.10), 0 10px 34px rgba(0,0,0,0.55);
-  border: 1px solid rgba(245,158,11,0.26);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(30,64,175,0.13), 0 2px 6px rgba(0,0,0,0.08);
+  border-color: var(--primary-light);
 }
 .stTabs [data-baseweb="tab-list"]{
-  gap: 8px; background: rgba(15,23,42,0.45); padding: 10px; border-radius: 12px;
-  border: 1px solid rgba(96,165,250,0.10); backdrop-filter: blur(10px);
+  gap: 6px; background: var(--surface2); padding: 8px; border-radius: 12px;
+  border: 1px solid var(--border);
 }
 .stTabs [data-baseweb="tab"]{
-  background: rgba(2,11,24,0.35); border-radius: 10px; color: var(--blue2);
-  font-weight: 700; padding: 12px 22px; border: 1px solid rgba(245,158,11,0.10); transition: all 0.25s ease;
+  background: transparent; border-radius: 8px; color: var(--text-sub);
+  font-weight: 700; padding: 10px 20px; border: 1px solid transparent; transition: all 0.2s ease;
 }
-.stTabs [data-baseweb="tab"]:hover{ border-color: rgba(245,158,11,0.26); box-shadow: 0 10px 26px rgba(0,0,0,0.35); }
+.stTabs [data-baseweb="tab"]:hover{ background: var(--surface); border-color: var(--border); color: var(--text); }
 .stTabs [aria-selected="true"]{
-  background: linear-gradient(135deg, rgba(245,158,11,0.92) 0%, rgba(180,83,9,0.88) 100%);
-  color: #0b1226; border: 1px solid rgba(253,230,138,0.35); text-shadow: none;
+  background: var(--primary-mid) !important;
+  color: #ffffff !important; border: 1px solid var(--primary) !important;
+  box-shadow: 0 2px 10px rgba(37,99,235,0.22);
 }
 [data-testid="stSidebar"]{
-  background: linear-gradient(180deg, rgba(2,11,24,0.95) 0%, rgba(15,23,42,0.92) 100%);
-  border-right: 2px solid rgba(245,158,11,0.14);
+  background: var(--surface) !important;
+  border-right: 1px solid var(--border) !important;
 }
-[data-testid="stSidebar"] *{ color: #e2e8f0 !important; }
-hr{ border-color: rgba(245,158,11,0.14) !important; margin: 30px 0 !important; }
-.alert-critical{ background: linear-gradient(135deg, rgba(239,68,68,0.18) 0%, rgba(220,38,38,0.26) 100%); padding: 20px; border-radius: 16px; color: #fecaca; font-weight: 800; font-size: 1.06rem; margin: 20px 0; box-shadow: 0 10px 34px rgba(239,68,68,0.22); border: 1px solid rgba(239,68,68,0.35); border-left: 6px solid #ef4444; }
-.alert-warning{ background: linear-gradient(135deg, rgba(251,191,36,0.14) 0%, rgba(245,158,11,0.22) 100%); padding: 20px; border-radius: 16px; color: #ffedd5; font-weight: 800; font-size: 1.06rem; margin: 20px 0; box-shadow: 0 10px 34px rgba(245,158,11,0.14); border: 1px solid rgba(245,158,11,0.28); border-left: 6px solid #f59e0b; }
-.alert-success{ background: linear-gradient(135deg, rgba(34,197,94,0.16) 0%, rgba(22,163,74,0.22) 100%); padding: 20px; border-radius: 16px; color: #bbf7d0; font-weight: 800; font-size: 1.06rem; margin: 20px 0; box-shadow: 0 10px 34px rgba(34,197,94,0.14); border: 1px solid rgba(34,197,94,0.28); border-left: 6px solid #22c55e; }
-.alert-info{ background: linear-gradient(135deg, rgba(59,130,246,0.14) 0%, rgba(37,99,235,0.20) 100%); padding: 20px; border-radius: 16px; color: #bfdbfe; font-weight: 800; font-size: 1.06rem; margin: 20px 0; box-shadow: 0 10px 34px rgba(59,130,246,0.14); border: 1px solid rgba(59,130,246,0.26); border-left: 6px solid #3b82f6; }
-.js-plotly-plot{ border-radius: 16px; box-shadow: 0 10px 34px rgba(0,0,0,0.55); background: rgba(15,23,42,0.45) !important; border: 1px solid rgba(245,158,11,0.12); }
-[data-testid="stDataFrame"]{ border-radius: 16px; overflow: hidden; box-shadow: 0 10px 34px rgba(0,0,0,0.55); border: 1px solid rgba(96,165,250,0.12); }
-[data-testid="stExpander"]{ background: rgba(15,23,42,0.45); border: 1px solid rgba(245,158,11,0.12); border-radius: 12px; backdrop-filter: blur(10px); }
+[data-testid="stSidebar"] *{ color: var(--text) !important; }
+hr{ border-color: var(--border) !important; margin: 24px 0 !important; }
+.alert-critical{ background: var(--danger-pale); padding: 18px 20px; border-radius: 12px; color: #7f1d1d; font-weight: 700; font-size: 1rem; margin: 16px 0; border: 1px solid #fca5a5; border-left: 5px solid var(--danger); }
+.alert-warning{ background: var(--warning-pale); padding: 18px 20px; border-radius: 12px; color: #78350f; font-weight: 700; font-size: 1rem; margin: 16px 0; border: 1px solid #fcd34d; border-left: 5px solid var(--warning-mid); }
+.alert-success{ background: var(--success-pale); padding: 18px 20px; border-radius: 12px; color: #14532d; font-weight: 700; font-size: 1rem; margin: 16px 0; border: 1px solid #86efac; border-left: 5px solid var(--success); }
+.alert-info{ background: var(--info-pale); padding: 18px 20px; border-radius: 12px; color: #0c4a6e; font-weight: 700; font-size: 1rem; margin: 16px 0; border: 1px solid #7dd3fc; border-left: 5px solid var(--info); }
+.js-plotly-plot{ border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); background: var(--surface) !important; border: 1px solid var(--border); }
+[data-testid="stDataFrame"]{ border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.06); border: 1px solid var(--border); }
+[data-testid="stExpander"]{ background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
 p, span, label{ color: var(--text) !important; }
-input, select, textarea{ background: rgba(2,11,24,0.55) !important; color: #fff7ed !important; border: 1px solid rgba(245,158,11,0.20) !important; border-radius: 10px !important; }
-button{ background: linear-gradient(135deg, rgba(245,158,11,0.95) 0%, rgba(180,83,9,0.92) 100%) !important; color: #0b1226 !important; border: none !important; border-radius: 10px !important; font-weight: 800 !important; transition: all 0.25s ease !important; box-shadow: 0 10px 26px rgba(0,0,0,0.35); }
-button:hover{ transform: translateY(-2px) !important; box-shadow: 0 12px 34px rgba(245,158,11,0.16), 0 10px 26px rgba(0,0,0,0.35) !important; filter: brightness(1.05); }
-.stDownloadButton button{ background: linear-gradient(135deg, rgba(34,197,94,0.92) 0%, rgba(22,163,74,0.90) 100%) !important; color: #052e16 !important; }
-.info-box{ background: rgba(15,23,42,0.50); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(245,158,11,0.12); backdrop-filter: blur(10px); }
-.insight-card{ background: linear-gradient(135deg, rgba(245,158,11,0.10) 0%, rgba(59,130,246,0.10) 100%); padding: 20px; border-radius: 16px; border: 1px solid rgba(245,158,11,0.18); margin: 15px 0; box-shadow: 0 10px 34px rgba(0,0,0,0.40); }
-.insight-card h4{ color: var(--sand) !important; margin-bottom: 10px !important; text-shadow: 0 0 16px rgba(245,158,11,0.22); }
+input, select, textarea{ background: var(--surface) !important; color: var(--text) !important; border: 1px solid var(--border-strong) !important; border-radius: 8px !important; }
+button{ background: var(--primary-mid) !important; color: #ffffff !important; border: none !important; border-radius: 8px !important; font-weight: 700 !important; transition: all 0.2s ease !important; box-shadow: 0 2px 8px rgba(37,99,235,0.18); }
+button:hover{ transform: translateY(-1px) !important; box-shadow: 0 6px 18px rgba(37,99,235,0.28) !important; filter: brightness(1.06); }
+.stDownloadButton button{ background: var(--success) !important; color: #ffffff !important; box-shadow: 0 2px 8px rgba(22,163,74,0.20); }
+.stDownloadButton button:hover{ box-shadow: 0 6px 18px rgba(22,163,74,0.32) !important; }
+.info-box{ background: var(--primary-pale); padding: 14px 16px; border-radius: 10px; margin-bottom: 16px; border: 1px solid #bfdbfe; }
+.insight-card{ background: linear-gradient(135deg, var(--primary-pale) 0%, #f0fdf4 100%); padding: 18px 20px; border-radius: 14px; border: 1px solid #bfdbfe; margin: 12px 0; box-shadow: 0 2px 10px rgba(30,64,175,0.07); }
+.insight-card h4{ color: var(--primary) !important; margin-bottom: 8px !important; }
 """)
 
 
@@ -578,11 +579,11 @@ button:hover{ transform: translateY(-2px) !important; box-shadow: 0 12px 34px rg
 # TEMPLATE PLOTLY GLOBALE
 # --------------------------------------------------
 PLOTLY_TEMPLATE = {
-    'plot_bgcolor':  'rgba(15, 23, 42, 0.8)',
-    'paper_bgcolor': 'rgba(15, 23, 42, 0.5)',
-    'font': {'color': '#cbd5e1', 'family': 'Arial, sans-serif'},
-    'xaxis': {'gridcolor': 'rgba(96,165,250,0.1)', 'linecolor': 'rgba(96,165,250,0.3)', 'zerolinecolor': 'rgba(96,165,250,0.3)'},
-    'yaxis': {'gridcolor': 'rgba(96,165,250,0.1)', 'linecolor': 'rgba(96,165,250,0.3)', 'zerolinecolor': 'rgba(96,165,250,0.3)'},
+    'plot_bgcolor':  '#ffffff',
+    'paper_bgcolor': '#ffffff',
+    'font': {'color': '#1e293b', 'family': 'Arial, sans-serif', 'size': 12},
+    'xaxis': {'gridcolor': '#e2e8f0', 'linecolor': '#cbd5e1', 'zerolinecolor': '#cbd5e1'},
+    'yaxis': {'gridcolor': '#e2e8f0', 'linecolor': '#cbd5e1', 'zerolinecolor': '#cbd5e1'},
 }
 
 
@@ -2197,13 +2198,13 @@ def _build_copertura_fig(df_cop_raw: pd.DataFrame, titolo: str, chart_key: str) 
 
     fig.update_layout(
         barmode="stack", height=520,
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="#ffffff", plot_bgcolor="#ffffff",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
-                    font=dict(color="#cbd5e1", size=11)),
+                    font=dict(color="#1e293b", size=11)),
         margin=dict(l=0, r=0, t=30, b=0),
     )
-    fig.update_xaxes(gridcolor="rgba(255,255,255,0.05)", showgrid=True)
-    fig.update_yaxes(gridcolor="rgba(255,255,255,0.07)", showgrid=True)
+    fig.update_xaxes(gridcolor="#e2e8f0", showgrid=True)
+    fig.update_yaxes(gridcolor="#e2e8f0", showgrid=True)
     st.plotly_chart(fig, use_container_width=True, key=chart_key)
 
 
@@ -2222,8 +2223,8 @@ with tab6:
 
         with col_r1:
             st.markdown(
-                "<div style='border:2px solid #3b82f6;border-radius:10px;padding:8px 14px;"
-                "margin-bottom:8px;color:#93c5fd;font-weight:700;'>ROSTER ORIGINALE</div>",
+                "<div style='border:2px solid #2563eb;border-radius:10px;padding:8px 14px;"
+                "margin-bottom:8px;background:#eff6ff;color:#1e40af;font-weight:700;'>ROSTER ORIGINALE</div>",
                 unsafe_allow_html=True,
             )
             if ha_cop1:
@@ -2233,8 +2234,8 @@ with tab6:
 
         with col_r2:
             st.markdown(
-                "<div style='border:2px solid #f59e0b;border-radius:10px;padding:8px 14px;"
-                "margin-bottom:8px;color:#fbbf24;font-weight:700;'>ROSTER2 — FERIE SPOSTATE</div>",
+                "<div style='border:2px solid #d97706;border-radius:10px;padding:8px 14px;"
+                "margin-bottom:8px;background:#fffbeb;color:#92400e;font-weight:700;'>ROSTER2 — FERIE SPOSTATE</div>",
                 unsafe_allow_html=True,
             )
             if ha_cop2:
@@ -2282,13 +2283,13 @@ with tab6:
 
             fig_gap.update_layout(
                 height=480, barmode="relative",
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="#ffffff", plot_bgcolor="#ffffff",
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
-                            font=dict(color="#cbd5e1", size=11)),
+                            font=dict(color="#1e293b", size=11)),
                 margin=dict(l=0, r=0, t=30, b=0),
             )
-            fig_gap.update_xaxes(gridcolor="rgba(255,255,255,0.05)")
-            fig_gap.update_yaxes(gridcolor="rgba(255,255,255,0.07)")
+            fig_gap.update_xaxes(gridcolor="#e2e8f0")
+            fig_gap.update_yaxes(gridcolor="#e2e8f0")
             st.plotly_chart(fig_gap, use_container_width=True, key="pc6_gap")
 
             st.markdown("---")
@@ -2318,8 +2319,8 @@ with tab6:
             fig_dep.update_layout(
                 barmode="group", height=400,
                 xaxis_title="Gap medio giornaliero",
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                legend=dict(font=dict(color="#cbd5e1")),
+                paper_bgcolor="#ffffff", plot_bgcolor="#ffffff",
+                legend=dict(font=dict(color="#1e293b")),
                 margin=dict(l=0, r=0, t=10, b=0),
             )
             fig_dep.add_vline(x=0, line_color="#ef4444", line_dash="dot", line_width=1.5)
@@ -2328,16 +2329,29 @@ with tab6:
             st.markdown("---")
 
         # ── SEZIONE 4: stima assunzioni ──────────────────────────────────
-        st.markdown("### 👷 Sezione 4 — Stima assunzioni necessarie")
-        st.markdown(
-            "<p style='color:#94a3b8;font-size:0.88rem;'>Basato sui dati <b>roster2</b>. "
-            "Per ogni deposito con gap medio negativo, si stima il numero di autisti aggiuntivi "
-            "necessari per coprire il deficit medio giornaliero.</p>",
-            unsafe_allow_html=True,
-        )
+        st.markdown("### 👷 Sezione 4 — Fabbisogno di personale")
 
         if ha_cop2:
             from math import ceil
+
+            # Badge stato simulazione ferie
+            if ferie_10:
+                st.markdown(
+                    "<div style='background:#fffbeb;border:1px solid #fcd34d;border-left:5px solid #f59e0b;"
+                    "border-radius:10px;padding:10px 16px;margin-bottom:12px;color:#78350f;font-weight:700;font-size:0.9rem;'>"
+                    "🏖️ <b>Simulazione attiva:</b> +10 giornate di ferie (5 Ancona + 5 altri depositi) "
+                    "già incluse nel calcolo.</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    "<div style='background:#f0f9ff;border:1px solid #7dd3fc;border-left:5px solid #0369a1;"
+                    "border-radius:10px;padding:10px 16px;margin-bottom:12px;color:#0c4a6e;font-weight:600;font-size:0.9rem;'>"
+                    "ℹ️ Calcolo basato su Roster2 senza ferie aggiuntive. "
+                    "Attiva <b>«Con 10 giornate di ferie»</b> nella sidebar per lo scenario peggiore.</div>",
+                    unsafe_allow_html=True,
+                )
+
             dep_gaps = df_copertura2_filtered.groupby("deposito")["gap"].mean().reset_index()
             dep_gaps.columns = ["deposito", "gap_medio"]
             dep_gaps["deficit_medio"] = dep_gaps["gap_medio"].apply(
@@ -2351,40 +2365,114 @@ with tab6:
             )
 
             if len(dep_gaps_deficit) == 0:
-                st.success("✅ Nessun deficit in roster2! Il piano ferie è sostenibile.")
+                st.markdown(
+                    "<div style='background:#f0fdf4;border:2px solid #86efac;border-radius:14px;"
+                    "padding:24px 28px;text-align:center;'>"
+                    "<p style='font-size:2rem;margin:0;'>✅</p>"
+                    "<p style='font-size:1.3rem;font-weight:800;color:#14532d;margin:8px 0 4px;'>"
+                    "Nessuna assunzione necessaria</p>"
+                    "<p style='color:#166534;font-size:0.95rem;margin:0;'>"
+                    "Il piano ferie del Roster2 è sostenibile con l'organico attuale.</p>"
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
             else:
-                totale_assunzioni = dep_gaps_deficit["assunzioni_stimate"].sum()
-                st.metric("👷 Totale assunzioni stimate", f"{int(totale_assunzioni)} autisti")
+                totale_assunzioni = int(dep_gaps_deficit["assunzioni_stimate"].sum())
+                sim_label = " (con +10gg ferie)" if ferie_10 else ""
 
+                # Banner principale fabbisogno
+                st.markdown(
+                    f"<div style='background:linear-gradient(135deg,#1e40af 0%,#2563eb 100%);"
+                    f"border-radius:16px;padding:28px 32px;text-align:center;margin:8px 0 20px;'>"
+                    f"<p style='color:rgba(255,255,255,0.75);font-size:0.9rem;font-weight:600;"
+                    f"text-transform:uppercase;letter-spacing:1px;margin:0 0 6px;'>"
+                    f"FABBISOGNO STIMATO{sim_label}</p>"
+                    f"<p style='color:#ffffff;font-size:3.2rem;font-weight:900;margin:0;line-height:1;'>"
+                    f"{totale_assunzioni}</p>"
+                    f"<p style='color:rgba(255,255,255,0.85);font-size:1.1rem;font-weight:700;margin:8px 0 0;'>"
+                    f"autisti da assumere</p>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
+                # Metriche riepilogative
+                mc1, mc2, mc3 = st.columns(3)
+                with mc1:
+                    st.metric("Depositi in deficit", f"{len(dep_gaps_deficit)}")
+                with mc2:
+                    worst_dep = dep_gaps_deficit.iloc[0]
+                    st.metric("Deposito più critico", worst_dep["deposito"],
+                              delta=f"{int(worst_dep['assunzioni_stimate'])} autisti", delta_color="inverse")
+                with mc3:
+                    deficit_max = dep_gaps_deficit["deficit_medio"].max()
+                    st.metric("Deficit medio max/gg", f"{deficit_max:.1f}")
+
+                st.markdown("#### Distribuzione per deposito")
+
+                # Grafico a barre orizzontale con gradiente di severità
+                dep_chart = dep_gaps_deficit.sort_values("assunzioni_stimate", ascending=True)
+                bar_colors = ["#dc2626" if v >= 5 else "#f97316" if v >= 3 else "#f59e0b"
+                              for v in dep_chart["assunzioni_stimate"]]
                 fig_ass = go.Figure(go.Bar(
-                    x=dep_gaps_deficit["deposito"],
-                    y=dep_gaps_deficit["assunzioni_stimate"],
-                    marker_color=[get_colore_deposito(d) for d in dep_gaps_deficit["deposito"]],
-                    text=dep_gaps_deficit["assunzioni_stimate"],
+                    y=dep_chart["deposito"],
+                    x=dep_chart["assunzioni_stimate"],
+                    orientation="h",
+                    marker_color=bar_colors,
+                    text=[f"<b>{int(v)}</b>" for v in dep_chart["assunzioni_stimate"]],
                     textposition="outside",
+                    textfont=dict(size=14, color="#1e293b"),
                 ))
                 fig_ass.update_layout(
-                    height=360, yaxis_title="Autisti da assumere",
-                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                    margin=dict(l=0, r=0, t=10, b=0),
+                    height=max(300, len(dep_chart) * 52 + 60),
+                    xaxis_title="Autisti da assumere",
+                    paper_bgcolor="#ffffff", plot_bgcolor="#ffffff",
+                    font=dict(color="#1e293b"),
+                    xaxis=dict(gridcolor="#e2e8f0"),
+                    yaxis=dict(gridcolor="#f1f5f9"),
+                    margin=dict(l=0, r=60, t=10, b=0),
                 )
                 st.plotly_chart(fig_ass, use_container_width=True, key="pc6_ass")
 
-                st.markdown("##### Dettaglio per deposito")
+                # Legenda colori
+                st.markdown(
+                    "<div style='display:flex;gap:16px;margin:4px 0 16px;font-size:0.82rem;color:#475569;'>"
+                    "<span>🔴 ≥5 autisti &nbsp;&nbsp;</span>"
+                    "<span>🟠 3–4 autisti &nbsp;&nbsp;</span>"
+                    "<span>🟡 1–2 autisti</span>"
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
+
+                st.markdown("#### Dettaglio analitico per deposito")
                 display_df = dep_gaps_deficit[["deposito", "gap_medio", "deficit_medio", "assunzioni_stimate"]].copy()
                 display_df.columns = ["Deposito", "Gap medio/gg", "Deficit medio/gg", "Autisti da assumere"]
                 display_df["Gap medio/gg"] = display_df["Gap medio/gg"].round(1)
                 display_df["Deficit medio/gg"] = display_df["Deficit medio/gg"].round(1)
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
 
-                # Export Excel
+                # Note metodologiche
+                st.markdown(
+                    "<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
+                    "padding:14px 18px;margin-top:12px;font-size:0.85rem;color:#64748b;'>"
+                    "<b>📐 Metodologia:</b> Il fabbisogno è <code>⌈|gap medio giornaliero|⌉</code> "
+                    "per ogni deposito con gap negativo sul periodo selezionato. "
+                    "Gap = organico in forza − assenze nominali − assenze statistiche − turni richiesti."
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
+
+                # Export Excel con foglio parametri
                 output_ass = BytesIO()
                 with pd.ExcelWriter(output_ass, engine="xlsxwriter") as writer:
                     display_df.to_excel(writer, sheet_name="Assunzioni", index=False)
+                    pd.DataFrame({
+                        "Parametro": ["Simulazione ferie +10gg", "Totale assunzioni stimate"],
+                        "Valore": ["Sì" if ferie_10 else "No", str(totale_assunzioni)],
+                    }).to_excel(writer, sheet_name="Parametri", index=False)
                 st.download_button(
                     "⬇️ Scarica piano assunzioni (Excel)",
                     data=output_ass.getvalue(),
-                    file_name=f"piano_assunzioni_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    file_name=f"piano_assunzioni{'_ferie10' if ferie_10 else ''}_{datetime.now().strftime('%Y%m%d')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
         else:
@@ -2396,15 +2484,15 @@ with tab6:
 # --------------------------------------------------
 st.markdown("---")
 st.markdown(f"""
-<div style='text-align:center;padding:30px;'>
-    <p style='font-size:1.2em;font-weight:700;color:#60a5fa;'>
-        <i class='fas fa-rocket'></i> ESTATE 2026 PREMIUM ANALYTICS
+<div style='text-align:center;padding:24px;border-top:1px solid #e2e8f0;margin-top:16px;'>
+    <p style='font-size:1.1em;font-weight:800;color:#1e40af;'>
+        ESTATE 2026 ANALYTICS
     </p>
-    <p style='font-size:0.9em;color:#93c5fd;margin-top:10px;'>
-        <i class='fas fa-bolt'></i> Powered by Streamlit · Plotly · PostgreSQL
+    <p style='font-size:0.85em;color:#64748b;margin-top:6px;'>
+        Powered by Streamlit · Plotly · PostgreSQL
     </p>
-    <p style='font-size:0.85em;color:#64748b;margin-top:5px;'>
-        <i class='far fa-clock'></i> Aggiornato: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
+    <p style='font-size:0.8em;color:#94a3b8;margin-top:4px;'>
+        Aggiornato: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
     </p>
 </div>
 """, unsafe_allow_html=True)
